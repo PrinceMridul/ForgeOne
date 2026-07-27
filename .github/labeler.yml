@@ -1,0 +1,21 @@
+frontend:
+  - changed-files:
+      - any-glob-to-any-file: 'apps/web/**'
+backend:
+  - changed-files:
+      - any-glob-to-any-file: 'apps/api/**'
+agent-runtime:
+  - changed-files:
+      - any-glob-to-any-file: 'apps/agent-runtime/**'
+database:
+  - changed-files:
+      - any-glob-to-any-file: 'packages/database/**'
+infrastructure:
+  - changed-files:
+      - any-glob-to-any-file: ['infra/**', 'docker-compose*.yml']
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: ['docs/**', '**/*.md']
+prompts:
+  - changed-files:
+      - any-glob-to-any-file: 'prompts/**'

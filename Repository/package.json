@@ -1,0 +1,14 @@
+{
+  "name": "forgeone-generated-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "fastify": "^5.0.0",
+    "zod": "^3.23.0"
+  }
+}

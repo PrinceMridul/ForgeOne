@@ -1,0 +1,49 @@
+{
+  "name": "@forgeone/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ForgeOne API Server",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:ci": "vitest run --passWithNoTests --coverage"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.0",
+    "@fastify/helmet": "^12.0.0",
+    "@fastify/jwt": "^9.0.0",
+    "@fastify/rate-limit": "^10.0.0",
+    "@fastify/swagger": "^9.0.0",
+    "@fastify/swagger-ui": "^5.0.0",
+    "@forgeone/database": "workspace:*",
+    "@forgeone/logger": "workspace:*",
+    "@forgeone/types": "workspace:*",
+    "fastify": "^5.0.0",
+    "fastify-plugin": "^5.0.0",
+    "fastify-type-provider-zod": "^4.0.0",
+    "zod": "^3.23.0",
+    "bcrypt": "^5.1.0",
+    "bullmq": "^5.0.0",
+    "ioredis": "^5.4.0",
+    "socket.io": "^4.8.0"
+  },
+  "devDependencies": {
+    "@forgeone/config": "workspace:*",
+    "@types/bcrypt": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0",
+    "@vitest/coverage-v8": "^3.0.0"
+  }
+}

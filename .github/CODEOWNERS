@@ -1,0 +1,11 @@
+* @forgeone/core
+apps/web/ @forgeone/frontend
+packages/ui/ @forgeone/frontend
+apps/api/ @forgeone/backend
+packages/database/ @forgeone/backend
+apps/agent-runtime/ @forgeone/agent-team
+prompts/ @forgeone/agent-team
+infra/ @forgeone/devops
+.github/ @forgeone/devops
+packages/config/ @forgeone/core
+packages/types/ @forgeone/core

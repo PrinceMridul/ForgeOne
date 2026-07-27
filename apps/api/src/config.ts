@@ -11,7 +11,16 @@ const configSchema = z.object({
   jwtIssuer: z.string().default('forgeone'),
   jwtAccessExpiry: z.string().default('15m'),
   jwtRefreshExpiry: z.string().default('7d'),
-  corsOrigin: z.string().default('http://localhost:3000'),
+  /**
+   * Comma-separated allowed origins. In development the Vite dev server
+   * proxies /api/v1 so the browser stays same-origin and never preflights;
+   * these cover the case where the web app is pointed straight at the API
+   * via VITE_API_URL. 5173 is Vite's default, 8080 is the sandbox port, 3000
+   * is the documented app port.
+   */
+  corsOrigin: z
+    .string()
+    .default('http://localhost:3000,http://localhost:5173,http://localhost:8080'),
   agentRuntimeUrl: z.string().url().default('http://localhost:8000'),
 });
 

@@ -391,10 +391,19 @@ function shortSha(seed: string): string {
 
 // ─── State builders ──────────────────────────────────────────────────────────
 
+/**
+ * Progress of the agent currently holding the pipeline, 0-100.
+ * Prefers the backend's per-stage figure; falls back to overall run progress
+ * for older API responses that predate `stageProgress`.
+ */
+function activeAgentProgress(run: WorkflowRun | null): number {
+  return run?.stageProgress ?? run?.stepProgress ?? 0;
+}
+
 function buildAgents(run: WorkflowRun | null, tick: number): Agent[] {
   const currentId = run?.currentAgent ? (BACKEND_TO_AGENT_ID[run.currentAgent] ?? null) : null;
   const completedSteps = run?.completedSteps ?? 0;
-  const overallPct = run?.stepProgress ?? 0;
+  const overallPct = activeAgentProgress(run);
 
   return AGENT_DEFS.map((def, i) => {
     const done = i < completedSteps;
@@ -445,17 +454,18 @@ function buildPipeline(
     const done = i < completedSteps;
     const active = def.agentId === currentId;
 
+    const stagePct = activeAgentProgress(run);
+
     let stage: PipelineStage = "waiting";
     if (done) {
       stage = "completed";
     } else if (active) {
-      const p = run?.stepProgress ?? 0;
-      if (p < 20) stage = "running";
-      else if (p < 65) stage = "generating";
+      if (stagePct < 20) stage = "running";
+      else if (stagePct < 65) stage = "generating";
       else stage = "validating";
     }
 
-    const progress = done ? 100 : active ? (run?.stepProgress ?? 0) : 0;
+    const progress = done ? 100 : active ? stagePct : 0;
     const producedOutputs = done
       ? def.outputs.map((o) => o.name)
       : def.outputs.filter((o) => artifactNames.has(o.name)).map((o) => o.name);

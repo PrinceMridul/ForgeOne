@@ -13,6 +13,7 @@ export const workflowRunSchema = z.object({
   status: runStatusEnum,
   currentAgent: agentTypeEnum.nullable().optional(),
   stepProgress: z.number().int().min(0).max(100),
+  stageProgress: z.number().int().min(0).max(100).optional(),
   totalSteps: z.number().int().positive(),
   completedSteps: z.number().int().nonnegative(),
   error: z.string().nullable().optional(),

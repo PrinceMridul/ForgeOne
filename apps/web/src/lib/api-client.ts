@@ -21,7 +21,10 @@ export interface WorkflowRun {
   description: string;
   status: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED";
   currentAgent: string | null;
+  /** Overall run completion, 0-100. */
   stepProgress: number;
+  /** Progress of the currently executing agent through its own lifecycle, 0-100. */
+  stageProgress?: number;
   totalSteps: number;
   completedSteps: number;
   error?: string | null;

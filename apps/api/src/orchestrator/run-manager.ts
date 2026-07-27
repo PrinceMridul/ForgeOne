@@ -38,6 +38,7 @@ export class RunManager {
       status: 'PENDING',
       currentAgent: 'ORCHESTRATOR',
       stepProgress: 0,
+      stageProgress: 0,
       totalSteps: 8,
       completedSteps: 0,
       error: null,
@@ -73,16 +74,18 @@ export class RunManager {
           runArtifacts.push(artifact);
           this.artifacts.set(run.id, runArtifacts);
         },
-        (currentAgent, stepProgress, completedSteps) => {
+        (currentAgent, stepProgress, completedSteps, stageProgress) => {
           run.currentAgent = currentAgent;
           run.stepProgress = stepProgress;
           run.completedSteps = completedSteps;
+          if (stageProgress !== undefined) run.stageProgress = stageProgress;
         },
       );
 
       run.status = 'COMPLETED';
       run.completedAt = new Date().toISOString();
       run.stepProgress = 100;
+      run.stageProgress = 100;
     } catch (err) {
       run.status = 'FAILED';
       run.error = err instanceof Error ? err.message : 'Pipeline execution failed';
@@ -124,6 +127,7 @@ export class RunManager {
       status: 'COMPLETED',
       currentAgent: 'DOCUMENTATION',
       stepProgress: 100,
+      stageProgress: 100,
       totalSteps: 8,
       completedSteps: 8,
       error: null,

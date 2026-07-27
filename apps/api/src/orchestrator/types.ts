@@ -49,7 +49,14 @@ export interface WorkflowRun {
   description: string;
   status: RunStatus;
   currentAgent: AgentType | null;
-  stepProgress: number; // 0 to 100
+  /** Overall run completion, 0 to 100. */
+  stepProgress: number;
+  /**
+   * Progress of the *currently executing* agent through its own lifecycle,
+   * 0 to 100. Additive field: consumers that only know `stepProgress` keep
+   * working unchanged.
+   */
+  stageProgress?: number;
   totalSteps: number;
   completedSteps: number;
   error?: string | null;

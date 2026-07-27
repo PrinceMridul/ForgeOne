@@ -154,9 +154,24 @@ export const runRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { id } = request.params;
       const artifacts = runManager.getRunArtifacts(id);
+
+      /**
+       * The live console re-fetches this list every 1.5s. Binary archives are
+       * carried as base64 and dominate the payload while being unusable in
+       * the browser — the UI links to the download endpoint for those. Strip
+       * their content here; `sizeBytes` and `downloadUrl` still describe them
+       * fully. Text artifacts keep their content so the file viewer works.
+       */
+      const listPayload = artifacts.map((artifact) => {
+        const isArchive =
+          artifact.mimeType === 'application/zip' || artifact.filename.endsWith('.zip');
+        if (!isArchive) return artifact;
+        return { ...artifact, content: undefined };
+      });
+
       return reply.send({
         success: true,
-        data: artifacts,
+        data: listPayload,
       });
     },
   );

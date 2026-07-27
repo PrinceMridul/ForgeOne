@@ -1,3 +1,4 @@
+﻿import type { AgentType } from '@forgeone/types';
 import { AgentRegistry } from './agent-registry';
 import { SharedContext } from './context';
 import { ExecutionPipeline } from './pipeline';
@@ -139,7 +140,6 @@ export class RunManager {
     const context = new SharedContext(mockId, projectId, mockRun.title, mockRun.description);
     this.runs.set(mockId, mockRun);
     this.contexts.set(mockId, context);
-    this.events.set(mockId, []);
 
     const zipBuffer = createZipArchive([
       {
@@ -183,7 +183,7 @@ export class RunManager {
 
     const seedArtifacts: GeneratedArtifact[] = [
       {
-        id: 'art-001',
+        id: '2f9a4c10-7b5e-4d18-9c3a-000000000001',
         runId: mockId,
         type: 'SPEC',
         producerAgent: 'PRODUCT_MANAGER',
@@ -196,11 +196,11 @@ export class RunManager {
         version: 1,
         dependencies: [],
         consumers: ['ARCHITECT', 'DEVELOPER'],
-        downloadUrl: `/api/v1/runs/${mockId}/artifacts/art-001/download`,
+        downloadUrl: `/api/v1/runs/${mockId}/artifacts/2f9a4c10-7b5e-4d18-9c3a-000000000001/download`,
         content: '# Product Requirement Document\n\n## Overview\nMeridian API multi-tenant billing engine with usage-based metering.\n\n## Core Scope\n- Tenant isolation and token-bucket rate limiting\n- Usage-based billing metrics aggregation\n- Event-driven transaction webhooks\n',
       },
       {
-        id: 'art-002',
+        id: '2f9a4c10-7b5e-4d18-9c3a-000000000002',
         runId: mockId,
         type: 'SPEC',
         producerAgent: 'PRODUCT_MANAGER',
@@ -213,11 +213,11 @@ export class RunManager {
         version: 1,
         dependencies: [],
         consumers: ['ARCHITECT', 'DEVELOPER'],
-        downloadUrl: `/api/v1/runs/${mockId}/artifacts/art-002/download`,
+        downloadUrl: `/api/v1/runs/${mockId}/artifacts/2f9a4c10-7b5e-4d18-9c3a-000000000002/download`,
         content: '[\n  { "id": "TASK-1", "title": "Setup Fastify Server", "status": "DONE" },\n  { "id": "TASK-2", "title": "Implement Health Endpoint", "status": "DONE" },\n  { "id": "TASK-3", "title": "Add Package Manifest", "status": "DONE" }\n]\n',
       },
       {
-        id: 'art-003',
+        id: '2f9a4c10-7b5e-4d18-9c3a-000000000003',
         runId: mockId,
         type: 'DOC',
         producerAgent: 'ARCHITECT',
@@ -228,13 +228,13 @@ export class RunManager {
         storageKey: `artifacts/${mockId}/Architecture.md`,
         createdAt: now,
         version: 1,
-        dependencies: ['art-001', 'art-002'],
+        dependencies: ['2f9a4c10-7b5e-4d18-9c3a-000000000001', '2f9a4c10-7b5e-4d18-9c3a-000000000002'],
         consumers: ['DEVELOPER'],
-        downloadUrl: `/api/v1/runs/${mockId}/artifacts/art-003/download`,
+        downloadUrl: `/api/v1/runs/${mockId}/artifacts/2f9a4c10-7b5e-4d18-9c3a-000000000003/download`,
         content: '# Architecture Blueprint\n\n## System Overview\nMicroservice architecture built on Fastify, TypeScript, Zod, and PostgreSQL.\n\n## Layers\n- HTTP Transport API Layer\n- Service & Billing Orchestration Layer\n- Data Access & Persistence Layer\n',
       },
       {
-        id: 'art-004',
+        id: '2f9a4c10-7b5e-4d18-9c3a-000000000004',
         runId: mockId,
         type: 'SOURCE_CODE',
         producerAgent: 'DEVELOPER',
@@ -245,13 +245,13 @@ export class RunManager {
         storageKey: `artifacts/${mockId}/package.json`,
         createdAt: now,
         version: 1,
-        dependencies: ['art-003'],
+        dependencies: ['2f9a4c10-7b5e-4d18-9c3a-000000000003'],
         consumers: ['REVIEWER', 'TESTER'],
-        downloadUrl: `/api/v1/runs/${mockId}/artifacts/art-004/download`,
+        downloadUrl: `/api/v1/runs/${mockId}/artifacts/2f9a4c10-7b5e-4d18-9c3a-000000000004/download`,
         content: '{\n  "name": "meridian-api",\n  "version": "1.0.0",\n  "private": true,\n  "scripts": {\n    "dev": "tsx watch src/index.ts",\n    "build": "tsc",\n    "start": "node dist/index.js"\n  },\n  "dependencies": {\n    "fastify": "^5.0.0",\n    "zod": "^3.23.0"\n  }\n}\n',
       },
       {
-        id: 'art-005',
+        id: '2f9a4c10-7b5e-4d18-9c3a-000000000005',
         runId: mockId,
         type: 'SOURCE_CODE',
         producerAgent: 'DEVELOPER',
@@ -262,13 +262,13 @@ export class RunManager {
         storageKey: `artifacts/${mockId}/src/index.ts`,
         createdAt: now,
         version: 1,
-        dependencies: ['art-003'],
+        dependencies: ['2f9a4c10-7b5e-4d18-9c3a-000000000003'],
         consumers: ['REVIEWER', 'TESTER'],
-        downloadUrl: `/api/v1/runs/${mockId}/artifacts/art-005/download`,
+        downloadUrl: `/api/v1/runs/${mockId}/artifacts/2f9a4c10-7b5e-4d18-9c3a-000000000005/download`,
         content: `import Fastify from 'fastify';\nimport { healthRoute } from './routes/health';\n\nconst server = Fastify({ logger: true });\nserver.register(healthRoute);\n\nconst start = async () => {\n  try {\n    await server.listen({ port: 4000, host: '0.0.0.0' });\n    console.log('Meridian API running on http://localhost:4000');\n  } catch (err) {\n    server.log.error(err);\n    process.exit(1);\n  }\n};\n\nstart();\n`,
       },
       {
-        id: 'art-006',
+        id: '2f9a4c10-7b5e-4d18-9c3a-000000000006',
         runId: mockId,
         type: 'SOURCE_CODE',
         producerAgent: 'DEVELOPER',
@@ -279,13 +279,13 @@ export class RunManager {
         storageKey: `artifacts/${mockId}/src/routes/health.ts`,
         createdAt: now,
         version: 1,
-        dependencies: ['art-003'],
+        dependencies: ['2f9a4c10-7b5e-4d18-9c3a-000000000003'],
         consumers: ['REVIEWER', 'TESTER'],
-        downloadUrl: `/api/v1/runs/${mockId}/artifacts/art-006/download`,
+        downloadUrl: `/api/v1/runs/${mockId}/artifacts/2f9a4c10-7b5e-4d18-9c3a-000000000006/download`,
         content: `import type { FastifyPluginAsync } from 'fastify';\n\nexport const healthRoute: FastifyPluginAsync = async (fastify) => {\n  fastify.get('/health', async () => {\n    return { status: 'ok', service: 'meridian-api', timestamp: new Date().toISOString() };\n  });\n};\n`,
       },
       {
-        id: 'art-007',
+        id: '2f9a4c10-7b5e-4d18-9c3a-000000000007',
         runId: mockId,
         type: 'ZIP',
         producerAgent: 'DEVELOPER',
@@ -296,13 +296,13 @@ export class RunManager {
         storageKey: `artifacts/${mockId}/Repository.zip`,
         createdAt: now,
         version: 1,
-        dependencies: ['art-004', 'art-005', 'art-006'],
+        dependencies: ['2f9a4c10-7b5e-4d18-9c3a-000000000004', '2f9a4c10-7b5e-4d18-9c3a-000000000005', '2f9a4c10-7b5e-4d18-9c3a-000000000006'],
         consumers: ['REVIEWER', 'TESTER', 'SECURITY', 'DEVOPS'],
-        downloadUrl: `/api/v1/runs/${mockId}/artifacts/art-007/download`,
+        downloadUrl: `/api/v1/runs/${mockId}/artifacts/2f9a4c10-7b5e-4d18-9c3a-000000000007/download`,
         content: zipBase64,
       },
       {
-        id: 'art-008',
+        id: '2f9a4c10-7b5e-4d18-9c3a-000000000008',
         runId: mockId,
         type: 'DOC',
         producerAgent: 'REVIEWER',
@@ -313,13 +313,13 @@ export class RunManager {
         storageKey: `artifacts/${mockId}/Review.md`,
         createdAt: now,
         version: 1,
-        dependencies: ['art-007'],
+        dependencies: ['2f9a4c10-7b5e-4d18-9c3a-000000000007'],
         consumers: ['TESTER'],
-        downloadUrl: `/api/v1/runs/${mockId}/artifacts/art-008/download`,
+        downloadUrl: `/api/v1/runs/${mockId}/artifacts/2f9a4c10-7b5e-4d18-9c3a-000000000008/download`,
         content: '# Code Review Report\n\n- All handlers strictly typed with Fastify and Zod.\n- Zero high/critical security findings.\n- Recommendation: Proceed to test phase.\n',
       },
       {
-        id: 'art-009',
+        id: '2f9a4c10-7b5e-4d18-9c3a-000000000009',
         runId: mockId,
         type: 'SECURITY',
         producerAgent: 'SECURITY',
@@ -330,13 +330,13 @@ export class RunManager {
         storageKey: `artifacts/${mockId}/SecurityAudit.md`,
         createdAt: now,
         version: 1,
-        dependencies: ['art-007'],
+        dependencies: ['2f9a4c10-7b5e-4d18-9c3a-000000000007'],
         consumers: ['DEVOPS'],
-        downloadUrl: `/api/v1/runs/${mockId}/artifacts/art-009/download`,
+        downloadUrl: `/api/v1/runs/${mockId}/artifacts/2f9a4c10-7b5e-4d18-9c3a-000000000009/download`,
         content: '# SAST & Dependency Security Audit\n\n- SAST scan score: 100/100\n- Vulnerabilities found: 0\n- Dependency vulnerability check: CLEAR\n',
       },
       {
-        id: 'art-010',
+        id: '2f9a4c10-7b5e-4d18-9c3a-000000000010',
         runId: mockId,
         type: 'DEPLOYMENT_PLAN',
         producerAgent: 'DEVOPS',
@@ -347,13 +347,13 @@ export class RunManager {
         storageKey: `artifacts/${mockId}/DeploymentPlan.md`,
         createdAt: now,
         version: 1,
-        dependencies: ['art-007', 'art-009'],
+        dependencies: ['2f9a4c10-7b5e-4d18-9c3a-000000000007', '2f9a4c10-7b5e-4d18-9c3a-000000000009'],
         consumers: ['DOCUMENTATION'],
-        downloadUrl: `/api/v1/runs/${mockId}/artifacts/art-010/download`,
+        downloadUrl: `/api/v1/runs/${mockId}/artifacts/2f9a4c10-7b5e-4d18-9c3a-000000000010/download`,
         content: '# Deployment Plan\n\n- Strategy: Blue/Green deployment\n- Environment: Staging / Production Kubernetes Cluster\n- Health Check: GET /health\n',
       },
       {
-        id: 'art-011',
+        id: '2f9a4c10-7b5e-4d18-9c3a-000000000011',
         runId: mockId,
         type: 'README',
         producerAgent: 'DOCUMENTATION',
@@ -364,13 +364,13 @@ export class RunManager {
         storageKey: `artifacts/${mockId}/README.md`,
         createdAt: now,
         version: 1,
-        dependencies: ['art-007'],
+        dependencies: ['2f9a4c10-7b5e-4d18-9c3a-000000000007'],
         consumers: [],
-        downloadUrl: `/api/v1/runs/${mockId}/artifacts/art-011/download`,
+        downloadUrl: `/api/v1/runs/${mockId}/artifacts/2f9a4c10-7b5e-4d18-9c3a-000000000011/download`,
         content: '# Meridian API\n\nMulti-tenant billing engine with usage-based metering.\n\n## Quick Start\n\n```bash\nnpm install\nnpm run dev\n```\n',
       },
       {
-        id: 'art-012',
+        id: '2f9a4c10-7b5e-4d18-9c3a-000000000012',
         runId: mockId,
         type: 'SUMMARY_REPORT',
         producerAgent: 'DOCUMENTATION',
@@ -381,13 +381,152 @@ export class RunManager {
         storageKey: `artifacts/${mockId}/SummaryReport.md`,
         createdAt: now,
         version: 1,
-        dependencies: ['art-011'],
+        dependencies: ['2f9a4c10-7b5e-4d18-9c3a-000000000011'],
         consumers: [],
-        downloadUrl: `/api/v1/runs/${mockId}/artifacts/art-012/download`,
+        downloadUrl: `/api/v1/runs/${mockId}/artifacts/2f9a4c10-7b5e-4d18-9c3a-000000000012/download`,
         content: '# Executive Summary Report\n\nEnd-to-end autonomous engineering run completed successfully.\nAll pipeline stages verified clean build, passing unit tests, and security clearance.\n',
       },
     ];
 
     this.artifacts.set(mockId, seedArtifacts);
+    this.events.set(mockId, this.buildSeedEvents(mockId, new Date(now).getTime()));
+  }
+
+  /**
+   * Telemetry for the seeded showcase run.
+   *
+   * This run is what the landing page surfaces first under "Recent runs", so
+   * opening it must show a complete console — logs, activity feed, and
+   * thinking timeline — not an empty shell. Events are stamped on a synthetic
+   * ascending timeline so the log reads chronologically.
+   */
+  private buildSeedEvents(runId: string, baseMs: number): ExecutionEvent[] {
+    const script: Array<{
+      agentType: AgentType;
+      role: string;
+      beats: Array<[ExecutionEvent['eventType'], string]>;
+    }> = [
+      {
+        agentType: 'PRODUCT_MANAGER',
+        role: 'Product Manager Agent',
+        beats: [
+          ['STATUS_CHANGE', '[RUNNING] Agent Product Manager Agent executing task...'],
+          ['STEP', 'Analyzing project request and user specifications...'],
+          ['LOG', 'Decomposed scope into 3 Epics and 8 engineering tasks.'],
+          ['ARTIFACT', 'Generated PRD.md product requirement document artifact'],
+          ['ARTIFACT', 'Generated Tasks.json specification artifact'],
+          ['STATUS_CHANGE', '[COMPLETE] Agent Product Manager Agent completed stage: PRD.md and Tasks.json produced.'],
+        ],
+      },
+      {
+        agentType: 'ARCHITECT',
+        role: 'Architect Agent',
+        beats: [
+          ['STATUS_CHANGE', '[RUNNING] Agent Architect Agent executing task...'],
+          ['STEP', 'Consuming PRD.md and Tasks.json to derive system topology...'],
+          ['LOG', 'Selected stack: Fastify 5, TypeScript, Zod, PostgreSQL 16.'],
+          ['ARTIFACT', 'Generated Architecture.md system blueprint artifact'],
+          ['STATUS_CHANGE', '[COMPLETE] Agent Architect Agent completed stage: Architecture blueprint published.'],
+        ],
+      },
+      {
+        agentType: 'DEVELOPER',
+        role: 'Developer Agent',
+        beats: [
+          ['STATUS_CHANGE', '[RUNNING] Agent Developer Agent executing task...'],
+          ['STEP', 'Reading Architecture.md and Tasks.json from SharedContext...'],
+          ['LOG', 'FILE_CREATED: package.json (320 bytes, json)'],
+          ['LOG', 'FILE_CREATED: src/index.ts (512 bytes, typescript)'],
+          ['LOG', 'FILE_CREATED: src/routes/health.ts (280 bytes, typescript)'],
+          ['ARTIFACT', 'Bundled all generated files into Repository.zip downloadable archive'],
+          ['STATUS_CHANGE', '[COMPLETE] Agent Developer Agent completed stage: 3 source files bundled into Repository.zip.'],
+        ],
+      },
+      {
+        agentType: 'REVIEWER',
+        role: 'Reviewer Agent',
+        beats: [
+          ['STATUS_CHANGE', '[RUNNING] Agent Reviewer Agent executing task...'],
+          ['STEP', 'Running static analysis across generated sources...'],
+          ['LOG', 'Verdict: APPROVED — all handlers strictly typed, no code smells detected.'],
+          ['ARTIFACT', 'Generated Review.md code review report artifact'],
+          ['STATUS_CHANGE', '[COMPLETE] Agent Reviewer Agent completed stage: Review approved.'],
+        ],
+      },
+      {
+        agentType: 'TESTER',
+        role: 'Tester Agent',
+        beats: [
+          ['STATUS_CHANGE', '[RUNNING] Agent Tester Agent executing task...'],
+          ['STEP', 'Executing generated test suite...'],
+          ['LOG', 'Test run complete: 32/32 passed, coverage 96.4%.'],
+          ['STATUS_CHANGE', '[COMPLETE] Agent Tester Agent completed stage: All tests green.'],
+        ],
+      },
+      {
+        agentType: 'SECURITY',
+        role: 'Security Agent',
+        beats: [
+          ['STATUS_CHANGE', '[RUNNING] Agent Security Agent executing task...'],
+          ['STEP', 'Running SAST scan and dependency audit...'],
+          ['LOG', 'SAST audit clean: 0 critical, 0 high, 0 medium findings.'],
+          ['ARTIFACT', 'Generated SecurityAudit.md report artifact'],
+          ['STATUS_CHANGE', '[COMPLETE] Agent Security Agent completed stage: Security clearance granted.'],
+        ],
+      },
+      {
+        agentType: 'DEVOPS',
+        role: 'DevOps Agent',
+        beats: [
+          ['STATUS_CHANGE', '[RUNNING] Agent DevOps Agent executing task...'],
+          ['STEP', 'Composing container build and rollout strategy...'],
+          ['LOG', 'Multi-stage image built; health probe GET /health returned 200.'],
+          ['ARTIFACT', 'Generated DeploymentPlan.md artifact'],
+          ['STATUS_CHANGE', '[COMPLETE] Agent DevOps Agent completed stage: Blue/green rollout plan ready.'],
+        ],
+      },
+      {
+        agentType: 'DOCUMENTATION',
+        role: 'Documentation Agent',
+        beats: [
+          ['STATUS_CHANGE', '[RUNNING] Agent Documentation Agent executing task...'],
+          ['STEP', 'Aggregating artifacts from every upstream stage...'],
+          ['ARTIFACT', 'Generated README.md project documentation artifact'],
+          ['ARTIFACT', 'Generated SummaryReport.md executive summary artifact'],
+          ['STATUS_CHANGE', '[COMPLETE] Agent Documentation Agent completed stage: Documentation set published.'],
+        ],
+      },
+    ];
+
+    const events: ExecutionEvent[] = [];
+    let sequence = 0;
+
+    const push = (
+      agentType: AgentType,
+      eventType: ExecutionEvent['eventType'],
+      message: string,
+    ): void => {
+      sequence++;
+      events.push({
+        id: `3c8b5d21-6a4f-4e29-8b7c-${String(sequence).padStart(12, '0')}`,
+        runId,
+        agentType,
+        eventType,
+        message,
+        timestamp: new Date(baseMs + sequence * 1400).toISOString(),
+      });
+    };
+
+    push('ORCHESTRATOR', 'STATUS_CHANGE', '[RUNNING] Workflow Run "ForgeOne Autonomous Execution" booted artifact-driven pipeline engine.');
+
+    for (const stage of script) {
+      for (const [eventType, message] of stage.beats) {
+        push(stage.agentType, eventType, message);
+      }
+    }
+
+    push('ORCHESTRATOR', 'STATUS_CHANGE', '[COMPLETE] Workflow Run finished all 8 stages with 12 artifacts produced.');
+
+    return events;
   }
 }

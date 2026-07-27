@@ -8,6 +8,10 @@ dist/
 .turbo/
 build/
 out/
+.output/
+.tanstack/
+.vinxi/
+.wrangler/
 *.tsbuildinfo
 .env
 .env.local

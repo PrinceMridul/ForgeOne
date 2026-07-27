@@ -73,8 +73,21 @@ function LiveRun() {
   const totalTokens = agents.reduce((n, a) => n + a.tokensUsed, 0);
   const cost = (totalTokens / 1000) * 0.008; // mock rate
   const latest = metrics[metrics.length - 1];
-  const runtimeSec = metrics.length * 0.9;
-  const runtime = `${String(Math.floor(runtimeSec / 60)).padStart(2, "0")}:${String(Math.floor(runtimeSec % 60)).padStart(2, "0")}`;
+
+  // Real elapsed time from the backend run, not the chart's frame count —
+  // the metrics buffer is pre-seeded with 40 points, which made a
+  // just-started run read "00:36" before any agent had moved.
+  const runtimeSec = backendRun
+    ? Math.max(
+        0,
+        Math.floor(
+          ((backendRun.completedAt ? new Date(backendRun.completedAt).getTime() : Date.now()) -
+            new Date(backendRun.startedAt).getTime()) /
+            1000,
+        ),
+      )
+    : 0;
+  const runtime = `${String(Math.floor(runtimeSec / 60)).padStart(2, "0")}:${String(runtimeSec % 60).padStart(2, "0")}`;
 
   const displayPrompt =
     prompt || "Build a Notion-style docs app with realtime cursors and a Postgres backend.";

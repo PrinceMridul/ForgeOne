@@ -38,8 +38,8 @@ ForgeOne is a multi-agent AI platform that orchestrates specialized software eng
 
 | Layer | Technology |
 |---|---|
-| **Frontend** | Next.js 15, TypeScript, Tailwind CSS, shadcn/ui |
-| **API** | Fastify 5, TypeScript, Prisma, Zod |
+| **Frontend** | TanStack Start (React 19), Vite, TypeScript, Tailwind CSS v4, shadcn/ui |
+| **API** | Fastify 5, TypeScript, Zod, Prisma |
 | **Agent Runtime** | Python 3.12+, FastAPI, LangGraph |
 | **Database** | PostgreSQL 16, Redis 7, Qdrant |
 | **Infrastructure** | Docker, Kubernetes, Terraform |
@@ -64,15 +64,32 @@ make infra
 make dev
 ```
 
-The web app will be available at `http://localhost:3000`.
+The web app runs at `http://localhost:8080` and the API at `http://localhost:4000`.
+In development the Vite dev server proxies `/api/v1` and `/health` to the API,
+so the browser stays same-origin and no CORS preflight is involved.
+
+### Live execution pacing
+
+The orchestration pipeline is deterministic and CPU-only — all eight agents
+resolve in roughly 8ms, faster than the console can poll. Pacing meters how
+quickly already-computed telemetry is released so a run streams agent by agent
+over ~40 seconds. Work itself is never slowed; only event emission is metered.
+
+| Variable | Default | Effect |
+|---|---|---|
+| `RUN_EVENT_PACING_MS` | `240` | Delay between telemetry events within a stage |
+| `RUN_STAGE_PACING_MS` | `900` | Settle time between agents |
+| `RUN_PACING` | *(unset)* | Set to `off` to restore instant completion |
+
+Pacing is disabled automatically under `NODE_ENV=test`.
 
 ## Architecture
 
 ```
 forgeone/
 ├── apps/
-│   ├── web/              # Next.js frontend
-│   ├── api/              # Fastify API server
+│   ├── web/              # TanStack Start frontend (live execution console)
+│   ├── api/              # Fastify API server + agent orchestrator
 │   └── agent-runtime/    # Python agent system
 ├── packages/
 │   ├── config/           # Shared ESLint & TypeScript configs

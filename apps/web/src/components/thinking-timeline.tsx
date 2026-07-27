@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLiveEngine } from "@/lib/live-engine";
 import { Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,7 +20,7 @@ const THOUGHTS: Record<string, string[]> = {
     "Extracting retryPolicy() into a shared util.",
     "Wiring zod validation for POST /projects.",
   ],
-  Ivy: [
+  Isla: [
     "Reviewing diff — noting an unbounded map on line 42.",
     "Approving with two nits addressed.",
     "Suggesting explicit return on retryPolicy.",
@@ -40,7 +40,7 @@ const THOUGHTS: Record<string, string[]> = {
     "Blue/green cutover to v482 healthy.",
     "Watching p99 for regressions.",
   ],
-  Iris: [
+  Vera: [
     "Split epic AUTH-12 into 4 sub-tasks.",
     "Notifying stakeholders on #eng-updates.",
     "Reprioritizing backlog by impact/effort.",
@@ -65,19 +65,33 @@ const KIND_TINT: Record<Beat["kind"], string> = {
 export function ThinkingTimeline({ height = 480 }: { height?: number }) {
   const { tick, agents } = useLiveEngine();
   const [beats, setBeats] = useState<Beat[]>([]);
+  // `agents` is a fresh array on every poll, so this effect can fire more than
+  // once for the same tick. Without this guard it emitted two beats sharing
+  // the id `b-<tick>`, which React rejects as a duplicate key and renders as
+  // duplicated/omitted rows.
+  const lastBeatTick = useRef<number | null>(null);
 
   useEffect(() => {
     if (tick % 2 !== 1) return;
-    const a = agents[tick % agents.length];
-    const pool = THOUGHTS[a?.name ?? "Kai"] ?? THOUGHTS.Kai;
-    const text = pool[(tick / 2) % pool.length];
+    if (lastBeatTick.current === tick) return;
+    lastBeatTick.current = tick;
+
+    // Attribute the thought to whoever actually holds the pipeline. Picking a
+    // rotating agent made this panel contradict the pipeline flow — showing
+    // Security "thinking" while it was still marked Waiting for inputs.
+    const active =
+      agents.find((x) => x.status === "working" || x.status === "thinking") ??
+      [...agents].reverse().find((x) => x.status === "done");
+
+    const pool = THOUGHTS[active?.name ?? "Kai"] ?? THOUGHTS.Kai;
+    const text = pool[Math.floor(tick / 2) % pool.length];
     const kind: Beat["kind"] = tick % 6 === 1 ? "decision" : tick % 3 === 0 ? "action" : "thought";
     setBeats((prev) =>
       [
         {
           id: `b-${tick}`,
-          agent: a?.name ?? "Kai",
-          role: a?.role ?? "Developer",
+          agent: active?.name ?? "Kai",
+          role: active?.role ?? "Developer",
           text,
           ts: new Date().toTimeString().slice(0, 8),
           kind,

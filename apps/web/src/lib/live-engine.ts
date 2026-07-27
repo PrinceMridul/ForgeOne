@@ -26,6 +26,7 @@ import type { LucideIcon } from "lucide-react";
 import type { Agent, ActivityEvent } from "./mock-data";
 import { api } from "./api-client";
 import type { WorkflowRun, ExecutionEvent, BackendArtifact } from "./api-client";
+import { resetBuildVerification } from "./build-verification";
 
 // Re-export types components already import from here
 export type { Agent, ActivityEvent };
@@ -801,6 +802,10 @@ export function selectRun(id: string): void {
  * Call this from a `useEffect` in the run page.
  */
 export function connectToRun(runId: string): void {
+  // The build-verification store latches on `endedAt` and refuses to restart.
+  // Clear it here so every run replays the CI pipeline, not just the first
+  // one after a full page load.
+  resetBuildVerification();
   startPolling(runId);
 }
 

@@ -1,0 +1,36 @@
+{
+  "name": "forgeone",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Your Autonomous Software Engineering Team",
+  "license": "MIT",
+  "engines": { "node": ">=22.0.0", "pnpm": ">=9.0.0" },
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "test:ci": "turbo run test:ci",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint:fix",
+    "type-check": "turbo run type-check",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "db:generate": "pnpm --filter @forgeone/database prisma generate",
+    "db:migrate": "pnpm --filter @forgeone/database prisma migrate dev",
+    "db:push": "pnpm --filter @forgeone/database prisma db push",
+    "db:seed": "pnpm --filter @forgeone/database prisma db seed",
+    "db:studio": "pnpm --filter @forgeone/database prisma studio",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
+    "prettier": "^3.4.0",
+    "prettier-plugin-tailwindcss": "^0.6.0",
+    "turbo": "^2.4.0"
+  }
+}

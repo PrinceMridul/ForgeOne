@@ -72,9 +72,27 @@ function iconFor(path: string, lang: string) {
   return FileCode2;
 }
 
-function buildTree(files: EmittedFile[]): TreeNode {
+/**
+ * The repository's own package.json is the source of truth for its name, so
+ * the tree is labelled with what the Developer actually produced rather than
+ * a fixed placeholder.
+ */
+function repoNameFrom(files: EmittedFile[], fallback: string): string {
+  const pkg = files.find((f) => f.path === "package.json" || f.path.endsWith("/package.json"));
+  if (pkg?.source) {
+    try {
+      const parsed = JSON.parse(pkg.source) as { name?: unknown };
+      if (typeof parsed.name === "string" && parsed.name.trim()) return parsed.name.trim();
+    } catch {
+      // Partially streamed or non-JSON content — fall through to the fallback.
+    }
+  }
+  return fallback;
+}
+
+function buildTree(files: EmittedFile[], rootName: string): TreeNode {
   const root: TreeNode = {
-    name: "meridian-api",
+    name: rootName,
     path: "",
     isFolder: true,
     children: [],
@@ -122,7 +140,8 @@ function buildTree(files: EmittedFile[]): TreeNode {
 /* ------------------------------------------------------------------ */
 
 export function GeneratedFiles({ height = 440 }: { height?: number }) {
-  const { pipeline, tick, producedArtifacts, artifacts, runningRunId } = useLiveEngine();
+  const { pipeline, tick, producedArtifacts, artifacts, runningRunId, backendRun } =
+    useLiveEngine();
   const build = useBuildVerification();
 
   const dev = pipeline.find((n) => n.agentId === "developer");
@@ -223,7 +242,22 @@ export function GeneratedFiles({ height = 440 }: { height?: number }) {
     }
   }, [repoZipped, build.endedAt, zipped, collapsing, emitted.length]);
 
-  const tree = useMemo(() => buildTree(emitted), [emitted]);
+  // Until package.json streams in, fall back to a slug of the run title so the
+  // panel never shows an unrelated project name.
+  const fallbackName = useMemo(() => {
+    const slug = (backendRun?.title ?? "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .split("-")
+      .filter(Boolean)
+      .slice(0, 3)
+      .join("-");
+    return slug || "repository";
+  }, [backendRun?.title]);
+
+  const repoName = useMemo(() => repoNameFrom(emitted, fallbackName), [emitted, fallbackName]);
+  const tree = useMemo(() => buildTree(emitted, repoName), [emitted, repoName]);
   const totalAdds = emitted.reduce((n, f) => n + f.adds, 0);
   const totalDels = emitted.reduce((n, f) => n + f.dels, 0);
 
@@ -233,7 +267,7 @@ export function GeneratedFiles({ height = 440 }: { height?: number }) {
         <div className="flex items-center gap-2 min-w-0">
           <Package className="h-4 w-4 text-primary shrink-0" />
           <div className="min-w-0">
-            <p className="text-sm font-medium truncate">Repository · meridian-api</p>
+            <p className="text-sm font-medium truncate">Repository · {repoName}</p>
             <p className="text-[11px] text-muted-foreground truncate">
               {emitted.length} files · <span className="text-success">+{totalAdds}</span>{" "}
               <span className="text-destructive">−{totalDels}</span>

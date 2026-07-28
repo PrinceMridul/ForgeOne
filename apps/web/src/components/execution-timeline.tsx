@@ -27,7 +27,7 @@ const iconFor: Record<string, any> = {
  * Purely visual bands built from the live agents + events stream.
  */
 export function ExecutionTimeline({ height = 220 }: { height?: number }) {
-  const { agents, events, tick } = useLiveEngine();
+  const { agents, events, tick, runningRunId } = useLiveEngine();
   const lanes = agents.slice(0, 7);
   const now = tick;
   // build synthetic spans per agent, using progress to size the bar.
@@ -36,7 +36,11 @@ export function ExecutionTimeline({ height = 220 }: { height?: number }) {
       <div className="flex items-center justify-between mb-3">
         <div>
           <p className="text-sm font-medium">Execution timeline</p>
-          <p className="text-[11px] text-muted-foreground">Live spans for run_482 · streaming</p>
+          <p className="text-[11px] text-muted-foreground">
+            {runningRunId
+              ? `Live spans for ${runningRunId.slice(0, 8)} · streaming`
+              : "No run attached"}
+          </p>
         </div>
         <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1">

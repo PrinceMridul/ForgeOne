@@ -305,6 +305,9 @@ export const create${entity.pascal}Schema = z.object({
 ${zodFields}
 });
 
+/** Derived from the schema above so the two can never drift apart. */
+export type Create${entity.pascal} = z.infer<typeof create${entity.pascal}Schema>;
+
 const listQuery = ${listQuerystring};
 
 export const ${entity.plural}Routes: FastifyPluginAsync = async (app) => {

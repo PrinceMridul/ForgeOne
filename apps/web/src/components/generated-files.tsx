@@ -16,6 +16,7 @@ export interface GeneratedFile {
 import {
   useBuildVerification,
   startBuildVerification,
+  updateBuildFacts,
   resetBuildVerification,
   getBuildStepColorToken,
   type BuildStepId,
@@ -302,8 +303,12 @@ export function GeneratedFiles({ height = 440 }: { height?: number }) {
 
   // Kick off Build Verification the moment Repository.zip is produced.
   useEffect(() => {
-    if (repoZipped && !build.active && !build.endedAt && emitted.length > 0) {
+    if (emitted.length === 0) return;
+    if (repoZipped && !build.active && !build.endedAt) {
       startBuildVerification(buildFactsFrom(emitted));
+    } else if (build.filesGenerated > 0 && emitted.length > build.filesGenerated) {
+      // Late-arriving files: keep the summary in step with the tree.
+      updateBuildFacts(buildFactsFrom(emitted));
     }
   }, [repoZipped, build.active, build.endedAt, emitted.length]);
 
@@ -434,7 +439,13 @@ export function GeneratedFiles({ height = 440 }: { height?: number }) {
         )}
 
         {zipped && (
-          <ZipCard adds={totalAdds} dels={totalDels} files={emitted.length} runId={runningRunId} />
+          <ZipCard
+            adds={totalAdds}
+            dels={totalDels}
+            files={emitted.length}
+            runId={runningRunId}
+            sha={buildFactsFrom(emitted).sha}
+          />
         )}
       </div>
 
@@ -645,11 +656,13 @@ function ZipCard({
   dels,
   files,
   runId,
+  sha,
 }: {
   adds: number;
   dels: number;
   files: number;
   runId: string;
+  sha: string;
 }) {
   return (
     <div className="h-full flex items-center justify-center p-6 animate-[fade-up_600ms_ease-out]">
@@ -660,7 +673,8 @@ function ZipCard({
         <p className="mt-3 text-sm font-medium">Repository.zip</p>
         <p className="mt-1 text-[11px] text-muted-foreground font-mono">
           {files} files · <span className="text-success">+{adds}</span>{" "}
-          <span className="text-destructive">−{dels}</span> · sha 4c9e1a2
+          <span className="text-destructive">−{dels}</span>
+          {sha ? ` · sha ${sha}` : ""}
         </p>
         <Button size="sm" className="mt-4 w-full gap-1.5" asChild>
           <a

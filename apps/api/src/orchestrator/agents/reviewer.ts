@@ -34,9 +34,11 @@ export class ReviewerAgent implements IAgent {
         detail: `${stats.routeFiles.length} route module(s) parse the request body before use.`,
       },
       {
-        label: 'Request and response types share one definition',
-        passed: files.some((f) => f.content.includes('z.infer<')),
-        detail: 'Handler types are inferred from the Zod schema rather than declared twice.',
+        label: 'Payload types are derived from their validation schema',
+        passed: stats.routeFiles.every((path) =>
+          (files.find((f) => f.path === path)?.content ?? '').includes('z.infer<'),
+        ),
+        detail: 'Create payload types use z.infer, so the type and the validator cannot drift apart.',
       },
       {
         label: 'Missing records return 404 rather than throwing',

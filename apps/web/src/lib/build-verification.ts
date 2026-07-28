@@ -289,6 +289,28 @@ export function startBuildVerification(input: BuildFacts) {
   startStep(0);
 }
 
+/**
+ * Refresh the measured figures without disturbing the running animation.
+ *
+ * Verification starts the moment Repository.zip appears, but the console
+ * receives artifacts in polling batches, so a few files can still land
+ * afterwards. Without this the summary froze at whatever count happened to be
+ * present at kick-off and disagreed with the repository tree.
+ */
+export function updateBuildFacts(facts: BuildFacts) {
+  if (!state.active && !state.endedAt) return;
+  if (facts.filesGenerated <= state.filesGenerated) return;
+  state = {
+    ...state,
+    filesGenerated: facts.filesGenerated,
+    repoSizeKb: facts.repoSizeKb,
+    artifactsProduced: facts.artifactsProduced,
+    testsPassed: facts.testsPassed,
+    sha: facts.sha,
+  };
+  emit();
+}
+
 export function resetBuildVerification() {
   clearTimers();
   state = {

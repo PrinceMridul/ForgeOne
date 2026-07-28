@@ -9,7 +9,12 @@ import {
   startRunInputSchema,
   runArtifactParamSchema,
 } from '../../schemas/runs';
-import { createApiResponseSchema, paginationQuerySchema, idParamSchema } from '../../schemas/common';
+import {
+  createApiResponseSchema,
+  paginationQuerySchema,
+  idParamSchema,
+  apiErrorResponseSchema,
+} from '../../schemas/common';
 
 /** Text payloads must declare UTF-8 or clients may decode them as latin-1. */
 function withUtf8Charset(mimeType: string): string {
@@ -96,7 +101,11 @@ export const runRoutes: FastifyPluginAsync = async (fastify) => {
         params: idParamSchema,
         response: {
           200: createApiResponseSchema(workflowRunSchema),
-          404: createApiResponseSchema(z.null()),
+          // Must describe the error envelope actually sent. Declaring the
+          // success shape here made the 404 branch fail serialization and
+          // surface as a 500, so clients could not tell a missing run from a
+          // broken server.
+          404: apiErrorResponseSchema,
         },
       },
     },
@@ -112,7 +121,7 @@ export const runRoutes: FastifyPluginAsync = async (fastify) => {
             message: `Workflow Run "${id}" not found`,
             requestId: request.id,
           },
-        } as unknown as { success: true; data: null });
+        });
       }
 
       return reply.send({

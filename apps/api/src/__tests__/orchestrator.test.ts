@@ -110,5 +110,21 @@ describe('ForgeOne Autonomous Orchestration Engine Test Suite', () => {
       expect(res.body).toContain('## Data Model');
       expect(res.body).toContain('## Request Flow');
     });
+
+    it('GET /api/v1/runs/:id should 404 for an unknown run, not 500', async () => {
+      // The 404 branch declared the success envelope as its response schema,
+      // so it failed serialization and surfaced as a 500. Clients could not
+      // distinguish a missing run from a broken server — which matters
+      // because runs are in-memory and do not survive a restart.
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/runs/11111111-2222-3333-4444-555555555555',
+      });
+
+      expect(res.statusCode).toBe(404);
+      const body = JSON.parse(res.body);
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('NOT_FOUND');
+    });
   });
 });

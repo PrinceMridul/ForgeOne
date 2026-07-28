@@ -27,6 +27,7 @@ import {
   Rocket,
   Sparkles,
   WifiOff,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -113,7 +114,15 @@ function LiveRun() {
           <div className="hidden md:flex items-center gap-2 ml-2 text-[11px] text-muted-foreground">
             <span className="font-mono">{runId ? runId.slice(0, 8) : "no-run"}</span>
             <span>·</span>
-            {connection === "offline" ? (
+            {connection === "missing" ? (
+              <span
+                className="inline-flex items-center gap-1 text-warning"
+                title="Runs are held in memory, so they do not survive an API restart."
+              >
+                <AlertTriangle className="h-3 w-3" />
+                run not found
+              </span>
+            ) : connection === "offline" ? (
               <span
                 className="inline-flex items-center gap-1 text-warning"
                 title="Cannot reach the ForgeOne API. Start it with `pnpm --filter @forgeone/api dev`."

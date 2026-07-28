@@ -55,16 +55,40 @@ export interface BackendArtifact {
   content?: string;
 }
 
+/**
+ * Carries the HTTP status so callers can tell "the server answered, and the
+ * thing you asked for isn't there" apart from "the server is unreachable".
+ * `status` is 0 when the request never got a response.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 // ---------- Generic request helper ----------
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-    ...init,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+      ...init,
+    });
+  } catch {
+    // fetch only rejects on a transport failure, never on an HTTP error status.
+    throw new ApiError(
+      `Could not reach the ForgeOne API at ${API_BASE || "the current origin"}.`,
+      0,
+    );
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
-    throw new Error(`API ${path} → ${res.status}: ${text}`);
+    throw new ApiError(`API ${path} → ${res.status}: ${text}`, res.status);
   }
 
   const json = (await res.json()) as { success: boolean; data: T };

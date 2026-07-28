@@ -7,7 +7,6 @@ export function MetricStrip() {
   const runtime = metrics.map((m) => m.runtimeMs);
   const memory = metrics.map((m) => m.memoryMb);
   const totalTokens = agents.reduce((s, a) => s + a.tokensUsed, 0);
-  const activeMem = agents.reduce((s, a) => s + a.memoryMb, 0);
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <MetricTile
@@ -26,9 +25,12 @@ export function MetricStrip() {
         stroke="var(--chart-4)"
         fill="var(--chart-4)"
       />
+      {/* Read the same series this tile plots. Summing per-agent memory made
+          the figure read 0.00 GB whenever no run was attached, while the
+          sparkline beside it showed a healthy curve. */}
       <MetricTile
         label="Memory"
-        value={(activeMem / 1024).toFixed(2)}
+        value={((memory.at(-1) ?? 0) / 1024).toFixed(2)}
         unit="GB"
         values={memory}
         stroke="var(--chart-2)"

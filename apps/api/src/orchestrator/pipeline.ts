@@ -282,6 +282,7 @@ export class ExecutionPipeline {
               content: art.content,
               dependencies: consumedArtifactIds,
               runId: run.id,
+              inRepository: art.inRepository ?? false,
             });
 
             onArtifact(graphArtifact);

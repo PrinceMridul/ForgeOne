@@ -42,6 +42,8 @@ export const generatedArtifactSchema = z.object({
   storageKey: z.string(),
   createdAt: z.string(),
   content: z.string().optional(),
+  /** True when the artifact is an entry in Repository.zip. */
+  inRepository: z.boolean().optional(),
 });
 
 export const startRunInputSchema = z.object({

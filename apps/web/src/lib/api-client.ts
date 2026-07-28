@@ -53,6 +53,8 @@ export interface BackendArtifact {
   storageKey: string;
   createdAt: string;
   content?: string;
+  /** True when the artifact is an entry in Repository.zip. */
+  inRepository?: boolean;
 }
 
 /**

@@ -15,6 +15,7 @@ export class ArtifactGraph {
     content: string;
     dependencies?: string[];
     runId: string;
+    inRepository?: boolean;
   }): GraphArtifact {
     const currentVersion = (this.filenameVersions.get(params.filename) ?? 0) + 1;
     this.filenameVersions.set(params.filename, currentVersion);
@@ -38,6 +39,7 @@ export class ArtifactGraph {
       content: params.content,
       runId: params.runId,
       storageKey: `artifacts/${params.runId}/${params.filename}`,
+      inRepository: params.inRepository ?? false,
     };
 
     Object.freeze(artifact);

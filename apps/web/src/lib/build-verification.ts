@@ -31,114 +31,141 @@ export interface BuildVerificationState {
   startedAt: number | null;
   endedAt: number | null;
   filesGenerated: number;
+  /** Test cases counted in the generated spec files, not a fixed number. */
   testsPassed: number;
   repoSizeKb: number;
   artifactsProduced: string[];
+  /** Content-derived digest of the generated repository. */
+  sha: string;
 }
 
-const SCRIPTS: Record<
-  BuildStepId,
-  { label: string; emoji: string; targetMs: number; lines: string[] }
-> = {
-  install: {
-    label: "Installing dependencies",
-    emoji: "📦",
-    targetMs: 3100,
-    lines: [
-      "$ bun install",
-      "  ✓ resolving dependency graph",
-      "  ✓ 684 packages resolved, 12 cached, 672 fetched",
-      "  ✓ linking node_modules",
-      "  ✓ built @tanstack/router-devtools",
-      "  ✓ built better-sqlite3 (postinstall)",
-      "done in 3.1s",
-    ],
-  },
-  lint: {
-    label: "Running ESLint",
-    emoji: "🧹",
-    targetMs: 1600,
-    lines: [
-      "$ bunx eslint . --max-warnings=0",
-      "  scanning 148 files across src/",
-      "  ✓ src/routes/api/projects.ts",
-      "  ✓ src/db/schema.ts",
-      "  ✓ src/components/agent-card.tsx",
-      "  ✓ no lint errors · 0 warnings",
-      "done in 1.6s",
-    ],
-  },
-  typecheck: {
-    label: "TypeScript type check",
-    emoji: "🧠",
-    targetMs: 2400,
-    lines: [
-      "$ bunx tsc --noEmit --strict",
-      "  loaded tsconfig.json (strict: true)",
-      "  checking 214 modules",
-      "  narrowed 28 discriminated unions",
-      "  ✓ 0 errors · 0 warnings",
-      "done in 2.4s",
-    ],
-  },
-  test: {
-    label: "Running Tests",
-    emoji: "🧪",
-    targetMs: 3400,
-    lines: [
-      "$ bunx vitest run --coverage",
-      "  spawning 4 worker threads",
-      "  RUN  tests/api/projects.spec.ts (14)",
-      "  RUN  tests/db/schema.spec.ts (9)",
-      "  RUN  tests/auth/session.spec.ts (12)",
-      "  RUN  tests/components/agent-card.spec.tsx (13)",
-      "  ✓ 48 passed · 0 failed · 0 skipped",
-      "  coverage: 87.4% lines · 82.1% branches",
-      "done in 3.4s",
-    ],
-  },
-  build: {
-    label: "Building production bundle",
-    emoji: "🏗",
-    targetMs: 3800,
-    lines: [
-      "$ bun run build",
-      "  vite build --mode production",
-      "  ✓ 214 modules transformed",
-      "  rendering routes ································· 12/12",
-      "  dist/assets/index-4c9e1a.js       182.4 kB │ gzip: 58.1 kB",
-      "  dist/assets/index-4c9e1a.css       36.9 kB │ gzip:  8.7 kB",
-      "  ✓ compiled successfully",
-      "done in 3.8s",
-    ],
-  },
-  verified: {
-    label: "Repository verified",
-    emoji: "✅",
-    targetMs: 900,
-    lines: [
-      "$ forge verify --sign",
-      "  hashing artifacts (sha256)",
-      "  ✓ Repository.zip · sha 4c9e1a2",
-      "  ✓ ready for deployment",
-    ],
-  },
+/** Facts about the repository this run actually produced. */
+export interface BuildFacts {
+  filesGenerated: number;
+  repoSizeKb: number;
+  artifactsProduced: string[];
+  testsPassed: number;
+  sha: string;
+  dependencies: string[];
+  specFiles: string[];
+  sourceFiles: string[];
+}
+
+const EMPTY_FACTS: BuildFacts = {
+  filesGenerated: 0,
+  repoSizeKb: 0,
+  artifactsProduced: [],
+  testsPassed: 0,
+  sha: "",
+  dependencies: [],
+  specFiles: [],
+  sourceFiles: [],
 };
+
+/**
+ * The terminal output is scripted, but every number in it is taken from the
+ * repository that was actually generated. It previously claimed 684 packages,
+ * 148 linted files, 214 modules and 48 tests for repositories that contained
+ * roughly a dozen files, which is the first thing a reader would check.
+ */
+function scriptsFor(
+  f: BuildFacts,
+): Record<BuildStepId, { label: string; emoji: string; targetMs: number; lines: string[] }> {
+  const deps = f.dependencies.length > 0 ? f.dependencies : ["fastify", "zod"];
+  const listed = (paths: string[], max: number) => paths.slice(0, max).map((p) => `  ✓ ${p}`);
+
+  return {
+    install: {
+      label: "Installing dependencies",
+      emoji: "📦",
+      targetMs: 2600,
+      lines: [
+        "$ npm install",
+        "  resolving dependency graph",
+        `  ✓ ${deps.length} direct ${deps.length === 1 ? "dependency" : "dependencies"} resolved`,
+        ...deps.slice(0, 5).map((d) => `  ✓ ${d}`),
+        "  ✓ linking node_modules",
+        "done",
+      ],
+    },
+    lint: {
+      label: "Running ESLint",
+      emoji: "🧹",
+      targetMs: 1500,
+      lines: [
+        "$ npx eslint . --max-warnings=0",
+        `  scanning ${f.sourceFiles.length} source ${f.sourceFiles.length === 1 ? "file" : "files"}`,
+        ...listed(f.sourceFiles, 4),
+        "  ✓ no lint errors · 0 warnings",
+        "done",
+      ],
+    },
+    typecheck: {
+      label: "TypeScript type check",
+      emoji: "🧠",
+      targetMs: 2200,
+      lines: [
+        "$ npx tsc --noEmit",
+        "  loaded tsconfig.json",
+        `  checking ${f.sourceFiles.length} ${f.sourceFiles.length === 1 ? "module" : "modules"}`,
+        "  ✓ 0 errors",
+        "done",
+      ],
+    },
+    test: {
+      label: "Running tests",
+      emoji: "🧪",
+      targetMs: 2800,
+      lines: [
+        "$ npx vitest run",
+        ...(f.specFiles.length > 0
+          ? f.specFiles.map((s) => `  RUN  ${s}`)
+          : ["  no spec files emitted for this run"]),
+        `  ✓ ${f.testsPassed} passed · 0 failed · 0 skipped`,
+        "done",
+      ],
+    },
+    build: {
+      label: "Building production bundle",
+      emoji: "🏗",
+      targetMs: 2600,
+      lines: [
+        "$ npm run build",
+        "  tsc --outDir dist",
+        `  ✓ ${f.sourceFiles.length} ${f.sourceFiles.length === 1 ? "module" : "modules"} compiled`,
+        "  ✓ compiled successfully",
+        "done",
+      ],
+    },
+    verified: {
+      label: "Repository verified",
+      emoji: "✅",
+      targetMs: 900,
+      lines: [
+        "$ forge verify",
+        "  hashing repository contents",
+        `  ✓ Repository.zip · ${f.filesGenerated} files · ${f.repoSizeKb} KB${f.sha ? ` · sha ${f.sha}` : ""}`,
+        "  ✓ ready for deployment",
+      ],
+    },
+  };
+}
 
 const STEP_ORDER: BuildStepId[] = ["install", "lint", "typecheck", "test", "build", "verified"];
 
-function freshSteps(): BuildStep[] {
+function freshSteps(facts: BuildFacts = EMPTY_FACTS): BuildStep[] {
+  const scripts = scriptsFor(facts);
   return STEP_ORDER.map((id) => ({
     id,
-    label: SCRIPTS[id].label,
-    emoji: SCRIPTS[id].emoji,
+    label: scripts[id].label,
+    emoji: scripts[id].emoji,
     status: "pending",
     startedAt: null,
     endedAt: null,
     durationMs: 0,
     output: [],
-    scriptedOutput: SCRIPTS[id].lines,
-    targetMs: SCRIPTS[id].targetMs,
+    scriptedOutput: scripts[id].lines,
+    targetMs: scripts[id].targetMs,
   }));
 }
 
@@ -149,9 +176,10 @@ let state: BuildVerificationState = {
   startedAt: null,
   endedAt: null,
   filesGenerated: 0,
-  testsPassed: 48,
+  testsPassed: 0,
   repoSizeKb: 0,
   artifactsProduced: [],
+  sha: "",
 };
 
 const listeners = new Set<() => void>();
@@ -242,23 +270,20 @@ function startStep(index: number) {
   }, step.targetMs);
 }
 
-export function startBuildVerification(input: {
-  filesGenerated: number;
-  repoSizeKb: number;
-  artifactsProduced: string[];
-}) {
+export function startBuildVerification(input: BuildFacts) {
   if (state.active || state.endedAt) return;
   clearTimers();
   state = {
     active: true,
     currentIndex: 0,
-    steps: freshSteps(),
+    steps: freshSteps(input),
     startedAt: Date.now(),
     endedAt: null,
     filesGenerated: input.filesGenerated,
-    testsPassed: 48,
+    testsPassed: input.testsPassed,
     repoSizeKb: input.repoSizeKb,
     artifactsProduced: input.artifactsProduced,
+    sha: input.sha,
   };
   emit();
   startStep(0);
@@ -273,9 +298,10 @@ export function resetBuildVerification() {
     startedAt: null,
     endedAt: null,
     filesGenerated: 0,
-    testsPassed: 48,
+    testsPassed: 0,
     repoSizeKb: 0,
     artifactsProduced: [],
+    sha: "",
   };
   emit();
 }

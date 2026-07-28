@@ -95,7 +95,12 @@ Do not output explanations. Only output files.
 
     context.set('generatedFiles', generatedFiles);
 
-    const artifactResults: Array<{ filename: string; mimeType: string; content: string }> = [];
+    const artifactResults: Array<{
+      filename: string;
+      mimeType: string;
+      content: string;
+      inRepository?: boolean;
+    }> = [];
 
     for (const file of generatedFiles) {
       emitEvent(`FILE_CREATED: ${file.path} (${file.size} bytes, ${file.language})`, 'LOG', {
@@ -112,6 +117,8 @@ Do not output explanations. Only output files.
         filename: file.path,
         mimeType: file.language === 'json' ? 'application/json' : 'text/plain',
         content: file.content,
+        // These are exactly the entries that go into Repository.zip below.
+        inRepository: true,
       });
     }
 

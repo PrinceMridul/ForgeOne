@@ -59,10 +59,23 @@ export class SecurityAgent implements IAgent {
       detail: `POST and DELETE on ${blueprint.entities.map((e) => `/api/${e.plural}`).join(', ')} accept unbounded request volume.`,
     });
 
+    const usesBoundParams =
+      stats.routeFiles.length > 0 &&
+      stats.routeFiles.every((p) => (files.find((f) => f.path === p)?.content ?? '').includes('$1'));
+    if (usesBoundParams) {
+      findings.push({
+        severity: 'INFO',
+        title: 'SQL statements bind their parameters',
+        detail:
+          'Every query in src/routes uses positional parameters through src/db/client.ts, so request values never reach the query text.',
+      });
+    }
+
     findings.push({
       severity: 'LOW',
-      title: 'State is held in process memory',
-      detail: 'Records live in a module-level Map. Data is lost on restart and is not shared across replicas.',
+      title: 'Schema is applied wholesale, with no migration history',
+      detail:
+        'src/db/schema.sql is idempotent but there is no ordered migration log, so a destructive change cannot be reviewed or rolled back independently.',
     });
 
     for (const cap of blueprint.capabilities) {
@@ -142,8 +155,8 @@ ${declaredDeps.map((d) => `- \`${d}@${blueprint.dependencies[d]}\` — no known 
 
 ${[
   counts.HIGH > 0 ? '1. Resolve the high-severity findings above before any public deployment.' : null,
-  '2. Add rate limiting to write paths.',
-  '3. Move persistence behind a real database with per-tenant scoping.',
+  '2. Add rate limiting to the write paths listed above.',
+  '3. Introduce an ordered migration history in place of applying schema.sql wholesale.',
 ]
   .filter(Boolean)
   .join('\n')}

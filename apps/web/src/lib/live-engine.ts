@@ -71,6 +71,11 @@ export interface Artifact {
   sha: string;
   content?: string;
   mimeType?: string;
+  /**
+   * True when this artifact is an entry in Repository.zip. The repository
+   * tree shows only these, so its file count always equals the download.
+   */
+  inRepository: boolean;
 }
 
 export interface Run {
@@ -596,6 +601,7 @@ function backendArtifactsToFrontend(list: BackendArtifact[]): Artifact[] {
       sha: shortSha(a.id),
       content: a.content,
       mimeType: a.mimeType,
+      inRepository: a.inRepository ?? false,
     };
   });
 }

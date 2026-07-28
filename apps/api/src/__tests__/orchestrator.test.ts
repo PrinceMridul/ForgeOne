@@ -107,8 +107,10 @@ describe('ForgeOne Autonomous Orchestration Engine Test Suite', () => {
       // This previously asserted on 'ForgeOne', which only passed because the
       // Architect emitted ForgeOne's own architecture for every prompt.
       expect(res.body).toContain('ForgeOne Autonomous Enterprise');
-      expect(res.body).toContain('## Data Model');
-      expect(res.body).toContain('## Request Flow');
+      expect(res.body).toContain('## Core Entities');
+      expect(res.body).toContain('## Relationships');
+      expect(res.body).toContain('## Data Flow');
+      expect(res.body).toContain('## Deployment Topology');
     });
 
     it('GET /api/v1/runs/:id should 404 for an unknown run, not 500', async () => {

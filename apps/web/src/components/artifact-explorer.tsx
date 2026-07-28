@@ -58,6 +58,7 @@ export function ArtifactExplorer({ maxHeight = 520 }: { maxHeight?: number }) {
     () => artifacts.filter((a) => (filter === "all" ? true : a.kind === filter)),
     [artifacts, filter],
   );
+  const repoCount = useMemo(() => artifacts.filter((a) => a.inRepository).length, [artifacts]);
   const active = visible.find((a) => a.id === selected) ?? visible[0];
 
   return (
@@ -65,8 +66,17 @@ export function ArtifactExplorer({ maxHeight = 520 }: { maxHeight?: number }) {
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3 shrink-0">
         <div>
           <p className="text-sm font-medium">Artifact explorer</p>
+          {/* Named precisely: this is every artifact the pipeline emitted,
+              which is a superset of the repository files shown in the tree.
+              Keeping the two counts distinct stops them looking contradictory. */}
           <p className="text-[11px] text-muted-foreground">
-            {artifacts.length} artifacts emitted this session
+            {artifacts.length} pipeline {artifacts.length === 1 ? "artifact" : "artifacts"}
+            {repoCount > 0 && (
+              <>
+                {" · "}
+                {repoCount} in repository
+              </>
+            )}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1">

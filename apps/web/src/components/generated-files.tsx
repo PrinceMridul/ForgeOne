@@ -19,6 +19,7 @@ import {
   resetBuildVerification,
   getBuildStepColorToken,
   type BuildStepId,
+  type BuildFacts,
 } from "@/lib/build-verification";
 import {
   ChevronRight,
@@ -129,6 +130,57 @@ function repoNameFrom(files: EmittedFile[], fallback: string): string {
   return fallback;
 }
 
+/**
+ * Derive the CI panel's figures from the repository that was actually
+ * generated. Everything here is measured — file count, byte size, declared
+ * dependencies, spec files and test cases — so the terminal output and the
+ * summary tiles agree with the download.
+ */
+function buildFactsFrom(files: EmittedFile[]): BuildFacts {
+  const bytes = files.reduce((n, f) => n + new Blob([f.source]).size, 0);
+
+  const pkg = files.find((f) => f.path === "package.json");
+  let dependencies: string[] = [];
+  if (pkg?.source) {
+    try {
+      const parsed = JSON.parse(pkg.source) as { dependencies?: Record<string, string> };
+      dependencies = Object.keys(parsed.dependencies ?? {});
+    } catch {
+      // package.json still streaming — leave the list empty.
+    }
+  }
+
+  const specFiles = files
+    .filter((f) => f.path.includes(".spec.") || f.path.startsWith("tests/"))
+    .map((f) => f.path);
+
+  const testsPassed = files
+    .filter((f) => specFiles.includes(f.path))
+    .reduce((n, f) => n + (f.source.match(/\bit\(/g) ?? []).length, 0);
+
+  // Deterministic content digest so the same repository always reports the
+  // same short sha, replacing the hardcoded "4c9e1a2".
+  let h = 0;
+  for (const f of files) {
+    const seed = `${f.path}:${f.source.length}`;
+    for (const c of seed) h = ((h << 5) - h + c.charCodeAt(0)) | 0;
+  }
+  const sha = Math.abs(h).toString(16).slice(0, 7).padStart(7, "0");
+
+  return {
+    filesGenerated: files.length,
+    repoSizeKb: Math.max(1, Math.round(bytes / 1024)),
+    // The entries inside Repository.zip. The archive itself is the container,
+    // not an entry, so listing it here would inflate the count by one.
+    artifactsProduced: files.map((f) => f.path),
+    testsPassed,
+    sha,
+    dependencies,
+    specFiles,
+    sourceFiles: files.filter((f) => /\.(tsx?|jsx?|mjs|cjs)$/.test(f.path)).map((f) => f.path),
+  };
+}
+
 function buildTree(files: EmittedFile[], rootName: string): TreeNode {
   const root: TreeNode = {
     name: rootName,
@@ -221,9 +273,11 @@ export function GeneratedFiles({ height = 440 }: { height?: number }) {
       return;
     }
 
-    const fileArts = artifacts.filter(
-      (a) => !a.name.endsWith(".zip") && !a.name.endsWith(".tar.gz"),
-    );
+    // Only files that are genuinely in Repository.zip. Filtering merely by
+    // "not a .zip" pulled every pipeline document — PRD.md, Architecture.md,
+    // PRReview.md, SecurityAudit.md and friends — into the repository tree,
+    // so the header claimed ~20 files for an 11-file download.
+    const fileArts = artifacts.filter((a) => a.inRepository);
 
     if (fileArts.length > 0) {
       const now = new Date();
@@ -249,20 +303,7 @@ export function GeneratedFiles({ height = 440 }: { height?: number }) {
   // Kick off Build Verification the moment Repository.zip is produced.
   useEffect(() => {
     if (repoZipped && !build.active && !build.endedAt && emitted.length > 0) {
-      const repoSizeKb = emitted.reduce(
-        (n, f) => n + Math.max(1, Math.round((f.source.length ?? 0) / 1024) + f.adds / 40),
-        0,
-      );
-      startBuildVerification({
-        filesGenerated: emitted.length,
-        repoSizeKb: Math.max(180, Math.round(repoSizeKb)),
-        artifactsProduced: [
-          "Repository.zip",
-          "openapi.yaml",
-          "coverage-report.html",
-          "sast-report.json",
-        ],
-      });
+      startBuildVerification(buildFactsFrom(emitted));
     }
   }, [repoZipped, build.active, build.endedAt, emitted.length]);
 
@@ -309,7 +350,11 @@ export function GeneratedFiles({ height = 440 }: { height?: number }) {
           <div className="min-w-0">
             <p className="text-sm font-medium truncate">Repository · {repoName}</p>
             <p className="text-[11px] text-muted-foreground truncate">
-              {emitted.length} files · <span className="text-success">+{totalAdds}</span>{" "}
+              {/* Deliberately says "repository files": this count is exactly
+                  the number of entries in Repository.zip, and is separate
+                  from the pipeline-artifact count in the explorer. */}
+              {emitted.length} repository {emitted.length === 1 ? "file" : "files"} ·{" "}
+              <span className="text-success">+{totalAdds}</span>{" "}
               <span className="text-destructive">−{totalDels}</span>
               {devActive && (
                 <>

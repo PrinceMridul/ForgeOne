@@ -206,7 +206,7 @@ function SummaryCard({ build }: { build: ReturnType<typeof useBuildVerification>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const cells: Array<{ label: string; value: string; icon: any; tone?: string }> = [
     { label: "Repository status", value: "Verified", icon: ShieldCheck, tone: "text-success" },
-    { label: "Files generated", value: `${build.filesGenerated}`, icon: FileCode2 },
+    { label: "Repository files", value: `${build.filesGenerated}`, icon: FileCode2 },
     {
       label: "Tests passed",
       value: `${build.testsPassed} / ${build.testsPassed}`,
@@ -215,7 +215,7 @@ function SummaryCard({ build }: { build: ReturnType<typeof useBuildVerification>
     },
     { label: "Build duration", value: formatDuration(duration), icon: Clock },
     { label: "Repository size", value: formatSize(build.repoSizeKb), icon: Package },
-    { label: "Artifacts produced", value: `${build.artifactsProduced.length}`, icon: Layers },
+    { label: "Bundled entries", value: `${build.artifactsProduced.length}`, icon: Layers },
   ];
 
   return (
@@ -263,7 +263,8 @@ function SummaryCard({ build }: { build: ReturnType<typeof useBuildVerification>
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium truncate">Repository.zip</p>
           <p className="text-[10px] text-muted-foreground font-mono truncate">
-            {build.filesGenerated} files · {formatSize(build.repoSizeKb)} · verified sha 4c9e1a2
+            {build.filesGenerated} files · {formatSize(build.repoSizeKb)}
+            {build.sha ? ` · verified sha ${build.sha}` : ""}
           </p>
         </div>
         <Button size="sm" className="h-7 gap-1.5" asChild>

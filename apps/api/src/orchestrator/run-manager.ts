@@ -162,21 +162,10 @@ export class RunManager {
         content:
           '# Meridian API\n\nMulti-tenant billing engine with usage-based metering.\n\n## Quick Start\n\n```bash\nnpm install\nnpm run dev\n```\n',
       },
-      {
-        path: 'PRD.md',
-        content:
-          '# Product Requirement Document\n\n## Overview\nMeridian API multi-tenant billing engine with usage-based metering.\n',
-      },
-      {
-        path: 'Architecture.md',
-        content:
-          '# Architecture Blueprint\n\n## System Overview\nMicroservice architecture built on Fastify, TypeScript, Zod, and PostgreSQL.\n',
-      },
-      {
-        path: 'Tasks.json',
-        content:
-          '[\n  { "id": "TASK-1", "title": "Setup Fastify Server", "status": "DONE" },\n  { "id": "TASK-2", "title": "Implement Health Endpoint", "status": "DONE" }\n]\n',
-      },
+      // PRD.md, Architecture.md and Tasks.json are pipeline documents written
+      // *about* the project, not files of it, so they are deliberately not
+      // bundled. The seeded run therefore obeys the same invariant as a live
+      // one: zip entries == artifacts flagged inRepository.
     ]);
 
     const zipBase64 = zipBuffer.toString('base64');
@@ -189,6 +178,7 @@ export class RunManager {
         producerAgent: 'PRODUCT_MANAGER',
         agentType: 'PRODUCT_MANAGER',
         filename: 'PRD.md',
+        inRepository: false,
         mimeType: 'text/markdown',
         sizeBytes: 1240,
         storageKey: `artifacts/${mockId}/PRD.md`,
@@ -206,6 +196,7 @@ export class RunManager {
         producerAgent: 'PRODUCT_MANAGER',
         agentType: 'PRODUCT_MANAGER',
         filename: 'Tasks.json',
+        inRepository: false,
         mimeType: 'application/json',
         sizeBytes: 680,
         storageKey: `artifacts/${mockId}/Tasks.json`,
@@ -223,6 +214,7 @@ export class RunManager {
         producerAgent: 'ARCHITECT',
         agentType: 'ARCHITECT',
         filename: 'Architecture.md',
+        inRepository: false,
         mimeType: 'text/markdown',
         sizeBytes: 2450,
         storageKey: `artifacts/${mockId}/Architecture.md`,
@@ -240,6 +232,7 @@ export class RunManager {
         producerAgent: 'DEVELOPER',
         agentType: 'DEVELOPER',
         filename: 'package.json',
+        inRepository: true,
         mimeType: 'application/json',
         sizeBytes: 320,
         storageKey: `artifacts/${mockId}/package.json`,
@@ -257,6 +250,7 @@ export class RunManager {
         producerAgent: 'DEVELOPER',
         agentType: 'DEVELOPER',
         filename: 'src/index.ts',
+        inRepository: true,
         mimeType: 'text/plain',
         sizeBytes: 512,
         storageKey: `artifacts/${mockId}/src/index.ts`,
@@ -274,6 +268,7 @@ export class RunManager {
         producerAgent: 'DEVELOPER',
         agentType: 'DEVELOPER',
         filename: 'src/routes/health.ts',
+        inRepository: true,
         mimeType: 'text/plain',
         sizeBytes: 280,
         storageKey: `artifacts/${mockId}/src/routes/health.ts`,
@@ -291,6 +286,7 @@ export class RunManager {
         producerAgent: 'DEVELOPER',
         agentType: 'DEVELOPER',
         filename: 'Repository.zip',
+        inRepository: false,
         mimeType: 'application/zip',
         sizeBytes: zipBuffer.length,
         storageKey: `artifacts/${mockId}/Repository.zip`,
@@ -308,6 +304,7 @@ export class RunManager {
         producerAgent: 'REVIEWER',
         agentType: 'REVIEWER',
         filename: 'Review.md',
+        inRepository: false,
         mimeType: 'text/markdown',
         sizeBytes: 920,
         storageKey: `artifacts/${mockId}/Review.md`,
@@ -325,6 +322,7 @@ export class RunManager {
         producerAgent: 'SECURITY',
         agentType: 'SECURITY',
         filename: 'SecurityAudit.md',
+        inRepository: false,
         mimeType: 'text/markdown',
         sizeBytes: 810,
         storageKey: `artifacts/${mockId}/SecurityAudit.md`,
@@ -342,6 +340,7 @@ export class RunManager {
         producerAgent: 'DEVOPS',
         agentType: 'DEVOPS',
         filename: 'DeploymentPlan.md',
+        inRepository: false,
         mimeType: 'text/markdown',
         sizeBytes: 1150,
         storageKey: `artifacts/${mockId}/DeploymentPlan.md`,
@@ -359,6 +358,7 @@ export class RunManager {
         producerAgent: 'DOCUMENTATION',
         agentType: 'DOCUMENTATION',
         filename: 'README.md',
+        inRepository: true,
         mimeType: 'text/markdown',
         sizeBytes: 640,
         storageKey: `artifacts/${mockId}/README.md`,
@@ -376,6 +376,7 @@ export class RunManager {
         producerAgent: 'DOCUMENTATION',
         agentType: 'DOCUMENTATION',
         filename: 'SummaryReport.md',
+        inRepository: false,
         mimeType: 'text/markdown',
         sizeBytes: 980,
         storageKey: `artifacts/${mockId}/SummaryReport.md`,

@@ -100,8 +100,11 @@ ${blueprint.capabilities
 
 ## Before Production
 
-- State currently lives in process memory; point the handlers at PostgreSQL
-  first, otherwise replicas will not agree with each other.
+- \`GET /health\` runs \`select 1\`, so a replica that cannot reach PostgreSQL
+  fails its probe instead of serving errors.
+- The image is stateless; scale horizontally without further work.
+- There is no migration history yet — \`schema.sql\` is applied wholesale, so a
+  destructive change would need review before it reaches a live database.
 `;
 
     emitEvent('Generated DeploymentPlan.md deployment plan artifact', 'ARTIFACT', { filename: 'DeploymentPlan.md' });

@@ -38,6 +38,13 @@ export interface GraphArtifact {
   content: string;
   runId: string;
   storageKey: string;
+  /**
+   * True when this artifact is an entry in Repository.zip rather than a
+   * pipeline document written about the project. Lets the console report
+   * repository files and pipeline artifacts as distinct counts that each
+   * match reality.
+   */
+  inRepository: boolean;
 }
 
 export interface GeneratedArtifact extends GraphArtifact {}

@@ -100,9 +100,11 @@ ${blueprint.entities.map((e) => `\`${e.plural}\``).join(', ')} — and
 
 ## Honest Limitations
 
-- Persistence is in-process; the SQL schema is emitted but not yet wired to the handlers.
-- The security audit reports real gaps rather than a clean bill of health — read it before deploying.
-- Generated specs cover handler behaviour, not durability or concurrency.
+- The generated specs are contract tests; they never open a database
+  connection, so the SQL and foreign keys are unexercised.
+- \`src/db/schema.sql\` is applied wholesale — there is no migration history.
+- The security audit reports real gaps rather than a clean bill of health.
+  Read it before deploying.
 
 ## Status: COMPLETE
 `;

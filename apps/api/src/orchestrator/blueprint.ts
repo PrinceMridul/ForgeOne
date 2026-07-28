@@ -1,34 +1,42 @@
 /**
- * Deterministic project blueprint.
+ * Project blueprint.
  *
- * When no LLM key is configured the pipeline still has to produce artifacts,
- * and those artifacts are the demo's proof of work. Previously every run
- * produced the *same* output regardless of the prompt — the Architect even
- * emitted a blueprint of ForgeOne's own monorepo rather than of the thing the
- * user asked for.
+ * Reads a one-line product idea and produces the model every downstream agent
+ * works from: a repository name, the resources the system needs, how those
+ * resources relate, and the cross-cutting capabilities implied.
  *
- * This module reads the prompt and derives a small, honest project model:
- * a name, the domain entities it mentions, and the capabilities it implies.
- * Every downstream agent renders its artifact from that model, so a run for a
- * chat app produces chat epics, a chat architecture, and chat routes.
+ * Resources come from two sources, in priority order:
+ *   1. nouns lifted directly out of the prompt (see `domain.ts`) — whatever
+ *      the user actually asked for always survives;
+ *   2. the canonical resources of the best-matching domain profile, which
+ *      supply what the domain implies but the sentence omits.
  *
- * This is a template engine, not a language model. It is deterministic and
- * side-effect free, and agents are explicit in their telemetry that it is the
- * baseline generator. Configure an API key and the real provider output takes
- * precedence.
+ * Deterministic and side-effect free. When an LLM provider is configured the
+ * Product Manager asks it for the resource list and passes it in, and this
+ * becomes the fallback path.
  */
+
+import {
+  DOMAIN_PROFILES,
+  detectDomain,
+  extractPromptNouns,
+  singularize,
+  type DomainProfile,
+} from './domain';
 
 export interface BlueprintField {
   name: string;
-  type: 'string' | 'number' | 'boolean' | 'timestamp' | 'uuid';
+  type: 'string' | 'number' | 'boolean' | 'timestamp' | 'uuid' | 'json';
+  /** Set when this field is a foreign key; names the referenced resource. */
+  references?: string;
 }
 
 export interface BlueprintEntity {
-  /** Singular lower-case identifier, e.g. "channel". */
+  /** snake_case singular identifier, e.g. "medical_record". */
   name: string;
-  /** Plural form used for routes and tables, e.g. "channels". */
+  /** Plural form used for routes and tables. */
   plural: string;
-  /** PascalCase form used for types, e.g. "Channel". */
+  /** PascalCase form used for types. */
   pascal: string;
   fields: BlueprintField[];
 }
@@ -47,20 +55,25 @@ export type CapabilityId =
 export interface Capability {
   id: CapabilityId;
   label: string;
-  /** Concrete technical consequence, used in architecture + task output. */
   implication: string;
 }
 
+export interface BlueprintRelation {
+  from: string;
+  to: string;
+  /** Always many-to-one in the generated schema: `from` holds the key. */
+  kind: 'many-to-one';
+}
+
 export interface ProjectBlueprint {
-  /** kebab-case repository name derived from the prompt. */
   name: string;
-  /** Human-readable title. */
   displayName: string;
-  /** The original prompt, trimmed. */
   summary: string;
+  /** Label of the detected domain, or null when nothing matched confidently. */
+  domain: string | null;
   entities: BlueprintEntity[];
+  relations: BlueprintRelation[];
   capabilities: Capability[];
-  /** Runtime dependencies implied by the detected capabilities. */
   dependencies: Record<string, string>;
 }
 
@@ -74,12 +87,12 @@ const CAPABILITY_RULES: Array<{ id: CapabilityId; label: string; implication: st
   {
     id: 'auth',
     label: 'Authentication & tenancy',
-    implication: 'Session-based auth with per-tenant row scoping',
+    implication: 'Session auth with per-tenant row scoping on every query',
     keywords: ['auth', 'login', 'sign in', 'signin', 'sso', 'oauth', 'account', 'seat', 'tenant', 'permission', 'role'],
   },
   {
     id: 'billing',
-    label: 'Billing & subscriptions',
+    label: 'Billing & payments',
     implication: 'Stripe webhooks reconciled against a local subscription ledger',
     keywords: ['billing', 'stripe', 'subscription', 'payment', 'invoice', 'metering', 'checkout', 'pricing', 'dunning'],
   },
@@ -92,13 +105,13 @@ const CAPABILITY_RULES: Array<{ id: CapabilityId; label: string; implication: st
   {
     id: 'storage',
     label: 'Media & file storage',
-    implication: 'S3-compatible object storage with presigned upload URLs',
-    keywords: ['upload', 'file', 'image', 'video', 'media', 'attachment', 'recording', 'asset', 'photo'],
+    implication: 'S3-compatible object storage with scoped, short-lived presigned URLs',
+    keywords: ['upload', 'file', 'image', 'video', 'media', 'attachment', 'recording', 'asset', 'photo', 'pdf', 'export'],
   },
   {
     id: 'notifications',
     label: 'Notifications',
-    implication: 'Queue-backed delivery with retry and idempotency keys',
+    implication: 'Queue-backed delivery with retries and idempotency keys',
     keywords: ['notification', 'email', 'webhook', 'alert', 'digest', 'reminder', 'push'],
   },
   {
@@ -121,62 +134,12 @@ const CAPABILITY_RULES: Array<{ id: CapabilityId; label: string; implication: st
   },
 ];
 
-/** Domain nouns worth modelling as first-class resources, with their fields. */
-const ENTITY_RULES: Array<{ match: string[]; name: string; fields: BlueprintField[] }> = [
-  { match: ['channel'], name: 'channel', fields: [f('name'), f('topic'), f('isPrivate', 'boolean')] },
-  { match: ['thread'], name: 'thread', fields: [f('parentId', 'uuid'), f('title'), f('replyCount', 'number')] },
-  { match: ['message', 'chat', 'messaging'], name: 'message', fields: [f('body'), f('authorId', 'uuid'), f('sentAt', 'timestamp')] },
-  { match: ['document', 'docs', 'doc', 'notion'], name: 'document', fields: [f('title'), f('body'), f('ownerId', 'uuid')] },
-  { match: ['page'], name: 'page', fields: [f('title'), f('slug'), f('body')] },
-  { match: ['comment'], name: 'comment', fields: [f('body'), f('authorId', 'uuid')] },
-  { match: ['board', 'kanban'], name: 'board', fields: [f('name'), f('columnOrder')] },
-  { match: ['card'], name: 'card', fields: [f('title'), f('description'), f('position', 'number')] },
-  { match: ['issue'], name: 'issue', fields: [f('title'), f('status'), f('assigneeId', 'uuid')] },
-  { match: ['task'], name: 'task', fields: [f('title'), f('status'), f('dueAt', 'timestamp')] },
-  { match: ['project', 'tracker'], name: 'project', fields: [f('name'), f('slug'), f('archived', 'boolean')] },
-  { match: ['product', 'storefront', 'ecommerce', 'commerce'], name: 'product', fields: [f('name'), f('priceCents', 'number'), f('sku')] },
-  { match: ['order', 'cart', 'checkout'], name: 'order', fields: [f('status'), f('totalCents', 'number'), f('placedAt', 'timestamp')] },
-  { match: ['subscription', 'billing', 'seat'], name: 'subscription', fields: [f('plan'), f('status'), f('renewsAt', 'timestamp')] },
-  { match: ['invoice'], name: 'invoice', fields: [f('number'), f('amountCents', 'number'), f('paidAt', 'timestamp')] },
-  { match: ['video', 'conferencing', 'conference', 'zoom', 'call', 'webrtc'], name: 'room', fields: [f('name'), f('startedAt', 'timestamp'), f('participantCount', 'number')] },
-  { match: ['recording'], name: 'recording', fields: [f('roomId', 'uuid'), f('durationSeconds', 'number'), f('url')] },
-  { match: ['whiteboard', 'canvas', 'excalidraw', 'figma'], name: 'canvas', fields: [f('name'), f('sceneVersion', 'number')] },
-  { match: ['shape', 'stroke'], name: 'shape', fields: [f('canvasId', 'uuid'), f('kind'), f('payload')] },
-  { match: ['dashboard'], name: 'dashboard', fields: [f('name'), f('layout')] },
-  { match: ['widget'], name: 'widget', fields: [f('dashboardId', 'uuid'), f('kind'), f('config')] },
-  { match: ['event', 'analytics'], name: 'event', fields: [f('kind'), f('payload'), f('occurredAt', 'timestamp')] },
-  { match: ['workspace', 'team', 'organization', 'org'], name: 'workspace', fields: [f('name'), f('slug')] },
-  { match: ['user', 'member', 'people', 'account'], name: 'user', fields: [f('email'), f('displayName'), f('avatarUrl')] },
-  { match: ['note'], name: 'note', fields: [f('title'), f('body')] },
-  { match: ['post', 'feed', 'social'], name: 'post', fields: [f('body'), f('authorId', 'uuid'), f('likeCount', 'number')] },
-  { match: ['playlist', 'movie', 'show', 'netflix', 'stream'], name: 'title', fields: [f('name'), f('synopsis'), f('releaseYear', 'number')] },
-  { match: ['booking', 'reservation', 'appointment'], name: 'booking', fields: [f('startsAt', 'timestamp'), f('endsAt', 'timestamp'), f('status')] },
-  { match: ['ticket', 'support', 'helpdesk'], name: 'ticket', fields: [f('subject'), f('status'), f('priority')] },
-];
+const CAPABILITY_BY_ID = new Map(CAPABILITY_RULES.map((r) => [r.id, r]));
 
-function f(name: string, type: BlueprintField['type'] = 'string'): BlueprintField {
-  return { name, type };
-}
-
-/**
- * Whole-word match allowing a plural or gerund suffix.
- *
- * Resource keywords must not match inside longer words: a plain substring
- * test made "Postgres" match the `post` rule, so a docs app came back with a
- * `posts` resource it never asked for. Capability keywords keep using
- * substring matching because several of them are deliberate stems
- * ("collaborat", "recommend").
- */
-function matchesWord(haystack: string, keyword: string): boolean {
-  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`\\b${escaped}(s|es|ing)?\\b`).test(haystack);
-}
-
-/** Verbs and filler that should never appear in a repository name. */
 const NAME_STOPWORDS = new Set([
   'build', 'ship', 'create', 'design', 'prototype', 'add', 'make', 'develop', 'implement', 'a', 'an', 'the',
   'with', 'and', 'for', 'on', 'of', 'to', 'in', 'using', 'that', 'me', 'my', 'app', 'application', 'platform',
-  'system', 'tool', 'service', 'website', 'site', 'clone', 'style', 'like', 'top', 'its', 'their', 'some',
+  'system', 'tool', 'service', 'website', 'site', 'style', 'like', 'top', 'its', 'their', 'some',
 ]);
 
 function pluralize(word: string): string {
@@ -193,9 +156,86 @@ function toPascal(word: string): string {
     .join('');
 }
 
+function f(
+  name: string,
+  type: BlueprintField['type'] = 'string',
+  references?: string,
+): BlueprintField {
+  return references ? { name, type, references } : { name, type };
+}
+
+/**
+ * Choose fields that suit the resource.
+ *
+ * Driven by what the name denotes rather than by a per-entity table, so a
+ * resource nobody anticipated ("lab_result", "availability_slot") still gets a
+ * sensible shape instead of a generic name/description pair.
+ */
+function inferFields(name: string): BlueprintField[] {
+  const n = name.toLowerCase();
+  const has = (...needles: string[]) => needles.some((needle) => n.includes(needle));
+
+  if (has('user', 'player', 'member', 'customer', 'patient', 'doctor', 'guest', 'agent', 'contact', 'profile', 'author', 'student', 'driver', 'participant'))
+    return [f('email'), f('display_name'), f('avatar_url')];
+
+  if (has('message', 'comment', 'reply', 'post', 'note'))
+    return [f('body'), f('author_id', 'uuid'), f('sent_at', 'timestamp')];
+
+  if (has('invoice', 'payment', 'order', 'transaction', 'ledger', 'billing'))
+    return [f('amount_cents', 'number'), f('currency'), f('status')];
+
+  if (has('subscription', 'plan', 'enrollment'))
+    return [f('plan'), f('status'), f('renews_at', 'timestamp')];
+
+  if (has('appointment', 'booking', 'meeting', 'reservation', 'slot', 'session'))
+    return [f('starts_at', 'timestamp'), f('ends_at', 'timestamp'), f('status')];
+
+  if (has('event', 'activity', 'view_', 'log', 'delivery'))
+    return [f('kind'), f('payload', 'json'), f('occurred_at', 'timestamp')];
+
+  if (has('rating', 'score', 'benchmark', 'metric'))
+    return [f('value', 'number'), f('scale'), f('recorded_at', 'timestamp')];
+
+  if (has('game', 'match', 'experiment', 'run', 'tournament', 'shipment'))
+    return [f('status'), f('started_at', 'timestamp'), f('finished_at', 'timestamp')];
+
+  if (has('move', 'step', 'action'))
+    return [f('sequence', 'number'), f('notation'), f('played_at', 'timestamp')];
+
+  if (has('record', 'result', 'report', 'prescription', 'transcript'))
+    return [f('summary'), f('body'), f('issued_at', 'timestamp')];
+
+  if (has('document', 'paper', 'page', 'resume', 'article', 'lesson', 'block'))
+    return [f('title'), f('body'), f('status')];
+
+  if (has('file', 'export', 'recording', 'asset', 'media', 'dataset', 'attachment'))
+    return [f('url'), f('content_type'), f('size_bytes', 'number')];
+
+  if (has('product', 'listing', 'title', 'episode', 'course', 'template', 'puzzle'))
+    return [f('name'), f('description'), f('published', 'boolean')];
+
+  if (has('inventory', 'stock'))
+    return [f('sku'), f('quantity', 'number'), f('warehouse')];
+
+  if (has('ticket', 'issue', 'task'))
+    return [f('title'), f('status'), f('priority')];
+
+  if (has('dashboard', 'widget', 'query', 'view'))
+    return [f('name'), f('config', 'json')];
+
+  if (has('skill', 'label', 'tag', 'category'))
+    return [f('name'), f('weight', 'number')];
+
+  if (has('follow', 'like', 'reaction'))
+    return [f('actor_id', 'uuid'), f('kind')];
+
+  if (has('organization', 'company', 'workspace', 'club', 'team', 'channel', 'project', 'account'))
+    return [f('name'), f('slug')];
+
+  return [f('name'), f('description')];
+}
+
 function deriveName(text: string): { name: string; displayName: string } {
-  // Keep the original tokens so capitalisation survives ("ForgeOne", "iOS"),
-  // and only lower-case for the stopword comparison.
   const words = text
     .replace(/[^A-Za-z0-9\s-]/g, ' ')
     .split(/\s+/)
@@ -206,64 +246,105 @@ function deriveName(text: string): { name: string; displayName: string } {
 
   return {
     name: picked.join('-').toLowerCase(),
-    // A word that already carries internal capitals is a proper noun — leave
-    // it alone rather than flattening it to Title Case.
     displayName: picked.map((w) => (/[A-Z]/.test(w.slice(1)) ? w : toPascal(w))).join(' '),
   };
 }
 
-/**
- * Derive a project model from the user's prompt. Pure and deterministic:
- * the same prompt always yields the same blueprint.
- */
-export function deriveBlueprint(title: string, description: string): ProjectBlueprint {
-  const source = `${title} ${description}`.toLowerCase();
-
-  const capabilities: Capability[] = CAPABILITY_RULES.filter((rule) =>
-    rule.keywords.some((kw) => source.includes(kw)),
-  ).map(({ id, label, implication }) => ({ id, label, implication }));
-
-  const seen = new Set<string>();
-  const entities: BlueprintEntity[] = [];
-  for (const rule of ENTITY_RULES) {
-    if (seen.has(rule.name)) continue;
-    if (rule.match.some((kw) => matchesWord(source, kw))) {
-      seen.add(rule.name);
-      entities.push({
-        name: rule.name,
-        plural: pluralize(rule.name),
-        pascal: toPascal(rule.name),
-        fields: rule.fields,
-      });
-    }
-    if (entities.length >= 4) break;
-  }
-
-  // Always model an owner/actor so generated code has something to scope by.
-  if (!seen.has('user') && entities.length < 4) {
-    entities.push({
-      name: 'user',
-      plural: 'users',
-      pascal: 'User',
-      fields: [f('email'), f('displayName'), f('avatarUrl')],
-    });
-  }
-
-  // Nothing recognised — fall back to a single generic resource rather than
-  // pretending to understand the prompt.
-  if (entities.length === 0) {
-    entities.push({
-      name: 'resource',
-      plural: 'resources',
-      pascal: 'Resource',
-      fields: [f('name'), f('description')],
-    });
-  }
-
-  const dependencies: Record<string, string> = {
-    fastify: '^5.0.0',
-    zod: '^3.23.0',
+function toEntity(name: string): BlueprintEntity {
+  const singular = singularize(name);
+  return {
+    name: singular,
+    plural: pluralize(singular),
+    pascal: toPascal(singular),
+    fields: inferFields(singular),
   };
+}
+
+/** Cap on generated resources: enough to be interesting, few enough to read. */
+const MAX_ENTITIES = 6;
+
+export interface DeriveOptions {
+  /**
+   * Resource names supplied by an LLM. When present these take priority over
+   * everything derived locally, and the domain profile only fills gaps.
+   */
+  suppliedResources?: string[];
+}
+
+export function deriveBlueprint(
+  title: string,
+  description: string,
+  options: DeriveOptions = {},
+): ProjectBlueprint {
+  const prompt = `${title} ${description}`;
+  const source = prompt.toLowerCase();
+
+  const { profile, score } = detectDomain(prompt);
+  // Require corroboration before trusting a domain — a single incidental word
+  // should not drag an unrelated prompt into a domain's resource set.
+  const domain: DomainProfile | null = score >= 2 ? profile : null;
+
+  // 1. Whatever the caller or the prompt named explicitly.
+  const ordered: string[] = [];
+  const seen = new Set<string>();
+  const add = (raw: string): void => {
+    const name = singularize(raw.toLowerCase().replace(/[\s-]+/g, '_'));
+    if (!name || seen.has(name) || ordered.length >= MAX_ENTITIES) return;
+    seen.add(name);
+    ordered.push(name);
+  };
+
+  for (const supplied of options.suppliedResources ?? []) add(supplied);
+  if (!options.suppliedResources?.length) {
+    for (const noun of extractPromptNouns(prompt)) add(noun);
+  }
+
+  // 2. Canonical resources for the domain fill the remainder.
+  if (domain) for (const resource of domain.resources) add(resource);
+
+  // 3. Nothing recognised at all — model one generic resource plus an actor
+  //    rather than pretending to have understood the prompt.
+  if (ordered.length === 0) {
+    add('resource');
+    add('user');
+  }
+
+  const entities = ordered.map(toEntity);
+  const byName = new Map(entities.map((e) => [e.name, e]));
+
+  // Relations: only edges whose both ends were actually modelled.
+  const relations: BlueprintRelation[] = [];
+  for (const [child, parent] of domain?.relations ?? []) {
+    const c = singularize(child);
+    const p = singularize(parent);
+    if (c === p || !byName.has(c) || !byName.has(p)) continue;
+    if (relations.some((r) => r.from === c && r.to === p)) continue;
+    relations.push({ from: c, to: p, kind: 'many-to-one' });
+  }
+
+  // Materialise each relation as a real foreign-key column on the child.
+  for (const relation of relations) {
+    const child = byName.get(relation.from)!;
+    const column = `${relation.to}_id`;
+    if (!child.fields.some((field) => field.name === column)) {
+      child.fields.unshift(f(column, 'uuid', relation.to));
+    }
+  }
+
+  // Capabilities: stated in the prompt, plus what the domain implies.
+  const capabilityIds = new Set<CapabilityId>();
+  for (const rule of CAPABILITY_RULES) {
+    if (rule.keywords.some((kw) => source.includes(kw))) capabilityIds.add(rule.id);
+  }
+  for (const implied of domain?.implies ?? []) {
+    if (CAPABILITY_BY_ID.has(implied as CapabilityId)) capabilityIds.add(implied as CapabilityId);
+  }
+
+  const capabilities: Capability[] = CAPABILITY_RULES.filter((r) => capabilityIds.has(r.id)).map(
+    ({ id, label, implication }) => ({ id, label, implication }),
+  );
+
+  const dependencies: Record<string, string> = { fastify: '^5.0.0', zod: '^3.23.0', pg: '^8.13.0' };
   for (const cap of capabilities) {
     if (cap.id === 'realtime') dependencies.ws = '^8.18.0';
     if (cap.id === 'auth') dependencies['@fastify/jwt'] = '^9.0.0';
@@ -279,8 +360,12 @@ export function deriveBlueprint(title: string, description: string): ProjectBlue
     name,
     displayName,
     summary: (description || title).trim(),
+    domain: domain?.label ?? null,
     entities,
+    relations,
     capabilities,
     dependencies,
   };
 }
+
+export { DOMAIN_PROFILES };

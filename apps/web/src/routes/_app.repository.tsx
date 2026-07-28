@@ -28,6 +28,20 @@ export const Route = createFileRoute("/_app/repository")({
   component: RepositoryPage,
 });
 
+/** The generated repository's own package.json is the source of its name. */
+function repoNameFrom(files: Artifact[]): string {
+  const pkg = files.find((f) => f.name === "package.json");
+  if (pkg?.content) {
+    try {
+      const parsed = JSON.parse(pkg.content) as { name?: unknown };
+      if (typeof parsed.name === "string" && parsed.name.trim()) return parsed.name.trim();
+    } catch {
+      // Not valid JSON yet — fall through.
+    }
+  }
+  return "repository";
+}
+
 function buildFileTreeFromArtifacts(
   artifacts: Artifact[],
   searchQuery: string,
@@ -38,48 +52,27 @@ function buildFileTreeFromArtifacts(
 } {
   const map = new Map<string, Artifact>();
 
-  // Filter out non-file build archives like Repository.zip
-  let fileArtifacts = artifacts.filter((a) => {
-    if (a.name.endsWith(".zip") || a.name.endsWith(".tar.gz")) return false;
-    return true;
-  });
+  // Only files that are genuinely in Repository.zip, so this explorer's file
+  // count matches the download and the live console. Filtering merely by
+  // "not an archive" also pulled in PRD.md, Architecture.md and the other
+  // pipeline documents.
+  let fileArtifacts = artifacts.filter((a) => a.inRepository);
 
   if (searchQuery.trim()) {
     const q = searchQuery.toLowerCase();
     fileArtifacts = fileArtifacts.filter((a) => a.name.toLowerCase().includes(q));
   }
 
-  const sourceFiles =
-    fileArtifacts.length > 0
-      ? fileArtifacts
-      : [
-          {
-            id: "default-1",
-            runId: "",
-            name: "package.json",
-            kind: "spec" as const,
-            size: "320 B",
-            when: "just now",
-            agent: "Kai",
-            sha: "4c9e1a2",
-            content: '{\n  "name": "meridian-api",\n  "version": "1.0.0",\n  "private": true\n}\n',
-          },
-          {
-            id: "default-2",
-            runId: "",
-            name: "src/index.ts",
-            kind: "doc" as const,
-            size: "512 B",
-            when: "just now",
-            agent: "Kai",
-            sha: "4c9e1a2",
-            content:
-              'import Fastify from "fastify";\nconst server = Fastify();\nserver.listen({ port: 4000 });\n',
-          },
-        ];
+  // No invented placeholder files: an empty repository renders as empty, and
+  // the page explains why rather than showing a fabricated package.json.
+  const sourceFiles = fileArtifacts;
+
+  // Name the tree after the repository that was actually generated, read from
+  // its own package.json, rather than a fixed placeholder.
+  const repoName = repoNameFrom(sourceFiles);
 
   const root: FileNode = {
-    name: "meridian-api",
+    name: repoName,
     type: "folder",
     children: [],
   };
@@ -93,7 +86,7 @@ function buildFileTreeFromArtifacts(
     for (let i = 0; i < parts.length; i++) {
       const name = parts[i];
       const isLeaf = i === parts.length - 1;
-      const fullPath = `meridian-api/${parts.slice(0, i + 1).join("/")}`;
+      const fullPath = `${repoName}/${parts.slice(0, i + 1).join("/")}`;
 
       cur.children = cur.children || [];
       let existing = cur.children.find((c) => c.name === name);

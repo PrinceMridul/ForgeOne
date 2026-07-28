@@ -44,6 +44,16 @@ export class ReviewerAgent implements IAgent {
         detail: 'Read and delete paths handle the absent case explicitly.',
       },
       {
+        label: 'SQL parameters are bound, never interpolated',
+        passed:
+          stats.routeFiles.length > 0 &&
+          stats.routeFiles.every((path) => {
+            const src = files.find((f) => f.path === path)?.content ?? '';
+            return src.includes('$1') && !/from \$\{/.test(src);
+          }),
+        detail: 'Every statement uses positional parameters, so user input cannot reach the query text.',
+      },
+      {
         label: 'Test coverage accompanies the implementation',
         passed: stats.testFiles.length > 0,
         detail: `${stats.testFiles.length} spec file(s), ${stats.testCases} case(s).`,
@@ -89,8 +99,16 @@ ${fileTable}${files.length > 12 ? `\n\n_…and ${files.length - 12} more._` : ''
 
 The resource modules (${blueprint.entities.map((e) => `\`${e.plural}\``).join(', ')}) follow one
 consistent shape, so a new resource can be added without inventing a new
-pattern. State is held in-process; swapping the module-level \`Map\` for a real
-repository is the natural next commit and does not change the route contract.
+pattern. Persistence goes through a single pooled client in
+\`src/db/client.ts\`, and \`src/db/schema.sql\` declares the foreign keys${
+      blueprint.relations.length > 0
+        ? ` (${blueprint.relations.map((r) => `${r.from} → ${r.to}`).join(', ')})`
+        : ''
+    } with indexes on the columns the list endpoints filter by.
+
+Follow-ups worth taking before this carries production traffic: there is no
+migration history yet — \`schema.sql\` is applied wholesale — and no
+transaction boundary spanning more than one statement.
 `;
 
     emitEvent('Generated PRReview.md review artifact', 'ARTIFACT', { filename: 'PRReview.md' });

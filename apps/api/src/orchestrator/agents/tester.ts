@@ -73,10 +73,9 @@ ${
 
 ## What each spec asserts
 
-For every covered resource the suite checks that:
-1. the collection starts empty,
-2. an invalid payload is rejected with \`400\`,
-3. a valid payload round-trips through \`POST\` then \`GET /:id\`.
+The specs cover the request contract for each resource: that a non-object
+payload is rejected, that required foreign keys are enforced, and that a
+malformed identifier fails validation before any query is attempted.
 
 ## Known Gaps
 
@@ -87,8 +86,10 @@ ${
         .join('\n')
     : '- None. Every generated resource has an accompanying spec.'
 }
-- Persistence is in-process, so these specs exercise handler behaviour, not
-  durability. They should be re-run against a real database once one is wired.
+- These are contract tests. They do not open a database connection, so the SQL
+  in \`src/routes\` and the foreign keys in \`src/db/schema.sql\` are unexercised.
+  Point \`DATABASE_URL\` at a scratch database and add integration tests before
+  relying on them.
 `;
 
     emitEvent('Generated TestReport.md test report artifact', 'ARTIFACT', { filename: 'TestReport.md' });

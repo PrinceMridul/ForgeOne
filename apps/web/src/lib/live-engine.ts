@@ -35,6 +35,9 @@ export type { Agent, ActivityEvent };
 
 export type LogLevel = "info" | "warn" | "error" | "debug";
 
+/** `idle` — no run attached. `connecting` — attached, first poll outstanding. */
+export type ConnectionState = "idle" | "connecting" | "live" | "offline";
+
 export interface LogLine {
   id: string;
   ts: string;
@@ -132,6 +135,12 @@ export interface EngineState {
   backendRun: WorkflowRun | null;
   /** Whether the most recent poll succeeded. */
   isConnected: boolean;
+  /**
+   * Connection lifecycle, distinguishing "haven't reached the API yet" from
+   * "reached it and then lost it". `isConnected` alone cannot tell those
+   * apart, which would make a starting run flash as offline.
+   */
+  connection: ConnectionState;
 }
 
 // ─── Pipeline definition ─────────────────────────────────────────────────────
@@ -628,6 +637,7 @@ function initialState(): EngineState {
     playback: { playing: true, speed: 1, position: metrics.length - 1 },
     backendRun: null,
     isConnected: false,
+    connection: "idle",
   };
 }
 
@@ -739,6 +749,7 @@ async function poll(): Promise<void> {
       playback,
       backendRun: run,
       isConnected: true,
+      connection: "live",
     };
     emit();
 
@@ -748,7 +759,7 @@ async function poll(): Promise<void> {
     }
   } catch (err) {
     console.error("[ForgeOne engine] poll failed:", err);
-    state = { ...state, isConnected: false };
+    state = { ...state, isConnected: false, connection: "offline" };
     emit();
   }
 }
@@ -757,6 +768,8 @@ function startPolling(runId: string): void {
   stopPolling();
   currentRunId = runId;
   tickCounter = 0;
+  state = { ...state, connection: "connecting" };
+  emit();
   void poll();
   pollInterval = setInterval(poll, 1500);
 }

@@ -1,8 +1,10 @@
 import type { IAgent, AgentExecutionResult } from '../agent-interface';
 import type { SharedContext } from '../context';
 import { ProviderRegistry } from '../../providers';
-import { parseGeneratedFiles, type GeneratedFile } from '../file-parser';
+import { parseGeneratedFiles, detectLanguage, type GeneratedFile } from '../file-parser';
 import { createZipArchive } from '../../utils/zip-builder';
+import { deriveBlueprint } from '../blueprint';
+import { scaffoldRepository } from '../scaffold';
 
 export class DeveloperAgent implements IAgent {
   public readonly agentType = 'DEVELOPER' as const;
@@ -20,68 +22,13 @@ export class DeveloperAgent implements IAgent {
     const architectureSpec = context.get<string>('architectureSpec') ?? 'N/A';
     const tasksSpec = context.get<string>('tasksSpec') ?? 'N/A';
 
-    const fallbackCodeBlock = `BEGIN FILE
-path: package.json
+    // The blueprint is derived from the user's prompt, so the baseline
+    // codebase is specific to what they asked for rather than one fixed
+    // sample project reused for every run.
+    const blueprint = context.get<ReturnType<typeof deriveBlueprint>>('blueprint')
+      ?? deriveBlueprint(context.title, context.description);
 
-{
-  "name": "forgeone-generated-app",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js"
-  },
-  "dependencies": {
-    "fastify": "^5.0.0",
-    "zod": "^3.23.0"
-  }
-}
-
-END FILE
-
-BEGIN FILE
-path: src/index.ts
-
-import Fastify from 'fastify';
-
-const server = Fastify({ logger: true });
-
-server.get('/health', async () => {
-  return { status: 'ok', service: '${context.title}' };
-});
-
-const start = async () => {
-  try {
-    await server.listen({ port: 4000, host: '0.0.0.0' });
-    console.log('Server running at http://localhost:4000');
-  } catch (err) {
-    server.log.error(err);
-    process.exit(1);
-  }
-};
-
-start();
-
-END FILE
-
-BEGIN FILE
-path: README.md
-
-# ${context.title}
-
-${context.description}
-
-## Quick Start
-
-\`\`\`bash
-npm install
-npm run dev
-\`\`\`
-END FILE
-`;
-
-    let rawCodeText = fallbackCodeBlock;
+    let rawCodeText = '';
 
     if (provider.isConfigured() && provider.providerType !== 'mock') {
       try {
@@ -124,15 +71,26 @@ Do not output explanations. Only output files.
         emitEvent(`Code generation provider error (${errorMsg}). Falling back to baseline generated codebase.`, 'LOG');
       }
     } else {
-      emitEvent('No active LLM API key configured. Generating baseline project codebase.', 'LOG');
+      emitEvent(
+        `No active LLM API key configured. Generating baseline codebase from the derived project blueprint (${blueprint.entities.length} resources, ${blueprint.capabilities.length} capabilities).`,
+        'LOG',
+      );
     }
 
     const generatedFiles: GeneratedFile[] = parseGeneratedFiles(rawCodeText);
 
-    // If fallback or LLM failed to format files correctly, ensure we have at least baseline files
+    // Either no provider was configured, or it replied in a format we could
+    // not parse. Render the blueprint directly — the result is still specific
+    // to this prompt rather than a fixed sample project.
     if (generatedFiles.length === 0) {
-      const fallbackFiles = parseGeneratedFiles(fallbackCodeBlock);
-      generatedFiles.push(...fallbackFiles);
+      for (const file of scaffoldRepository(blueprint)) {
+        generatedFiles.push({
+          path: file.path,
+          content: file.content,
+          language: detectLanguage(file.path),
+          size: Buffer.byteLength(file.content, 'utf-8'),
+        });
+      }
     }
 
     context.set('generatedFiles', generatedFiles);
@@ -178,7 +136,7 @@ Do not output explanations. Only output files.
 
     return {
       agentType: this.agentType,
-      summary: `Generated ${generatedFiles.length} project source files and bundled downloadable Repository.zip via ${provider.providerName}.`,
+      summary: `Generated ${generatedFiles.length} source files for ${blueprint.name} (${blueprint.entities.map((e) => e.plural).join(', ')}) and bundled Repository.zip via ${provider.providerName}.`,
       artifacts: artifactResults,
     };
   }

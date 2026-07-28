@@ -100,7 +100,13 @@ describe('ForgeOne Autonomous Orchestration Engine Test Suite', () => {
       expect(res.statusCode).toBe(200);
       expect(res.headers['content-type']).toBe('text/markdown');
       expect(res.body).toContain('System Architecture Blueprint');
-      expect(res.body).toContain('ForgeOne');
+
+      // The blueprint must describe the project that was actually requested.
+      // This previously asserted on 'ForgeOne', which only passed because the
+      // Architect emitted ForgeOne's own architecture for every prompt.
+      expect(res.body).toContain('ForgeOne Autonomous Enterprise');
+      expect(res.body).toContain('## Data Model');
+      expect(res.body).toContain('## Request Flow');
     });
   });
 });

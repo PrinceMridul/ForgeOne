@@ -1,6 +1,7 @@
 import type { IAgent, AgentExecutionResult } from '../agent-interface';
 import type { SharedContext } from '../context';
 import { ProviderRegistry } from '../../providers';
+import { deriveBlueprint } from '../blueprint';
 
 export class ArchitectAgent implements IAgent {
   public readonly agentType = 'ARCHITECT' as const;
@@ -23,40 +24,72 @@ export class ArchitectAgent implements IAgent {
     const provider = ProviderRegistry.getInstance().getDefaultProvider();
     emitEvent(`Selected LLM Provider: ${provider.providerName} (${provider.defaultModel})`, 'LOG');
 
-    const fallbackArchitectureContent = `# System Architecture Blueprint — ${context.title}
+    const blueprint = context.get<ReturnType<typeof deriveBlueprint>>('blueprint')
+      ?? deriveBlueprint(context.title, context.description);
 
-## System Topology & Monorepo Structure
+    emitEvent(
+      `Deriving topology for ${blueprint.entities.length} resources and ${blueprint.capabilities.length} cross-cutting concerns.`,
+      'LOG',
+    );
 
-ForgeOne is built as a microservices-capable monorepo managed via Turborepo & pnpm workspaces:
+    const capabilityRows = blueprint.capabilities.length
+      ? blueprint.capabilities.map((c) => `| ${c.label} | ${c.implication} |`).join('\n')
+      : '| — | No cross-cutting subsystems detected. |';
+
+    const routeTree = blueprint.entities
+      .map((e) => `│   ├── routes/${e.plural}.ts     # ${e.pascal} handlers + Zod schema`)
+      .join('\n');
+
+    const tableList = blueprint.entities
+      .map(
+        (e) =>
+          `- **${e.plural}** — \`id uuid pk\`, ${e.fields.map((f) => `\`${f.name} ${f.type}\``).join(', ')}, \`created_at timestamptz\``,
+      )
+      .join('\n');
+
+    const fallbackArchitectureContent = `# System Architecture Blueprint — ${blueprint.displayName}
+
+${blueprint.summary}
+
+## Service Topology
+
+A single deployable Node service fronted by Fastify, backed by PostgreSQL.
+Kept deliberately modular so any resource can be extracted into its own
+service later without changing its public contract.
 
 \`\`\`
-forgeone/
-├── apps/
-│   ├── web/              # Next.js 15 App Router Frontend (:3000)
-│   ├── api/              # Fastify 5 High-Performance API Server (:4000)
-│   └── agent-runtime/    # Python 3.12 FastAPI Agent System (:8000)
-├── packages/
-│   ├── config/           # Shared TypeScript & ESLint configurations
-│   ├── database/         # Prisma ORM & PostgreSQL schema
-│   ├── types/            # Shared DTOs and WebSocket event types
-│   └── logger/           # Structured Pino logger
-└── infra/                # Docker Compose & Deployment manifests
+${blueprint.name}/
+├── src/
+│   ├── index.ts          # Fastify bootstrap, health probe, route registration
+${routeTree}
+│   └── db/schema.sql     # Relational schema
+├── tests/                # Route-level integration tests
+└── Dockerfile            # Multi-stage build with a health check
 \`\`\`
 
-## Technology Stack Selection
+## Data Model
 
-- **Frontend**: Next.js 15, React 19, Tailwind CSS v4, Lucide Icons, Zustand state management.
-- **API Engine**: Fastify v5 with \`fastify-type-provider-zod\`, Zod runtime validation, OpenAPI 3.0 via Swagger UI.
-- **Agent Runtime**: Python 3.12+, FastAPI, LangGraph state machine, MCP-compatible tool bindings.
-- **Data & Storage**: PostgreSQL 16 (Relational DB), Redis 7 (Cache & BullMQ), Qdrant (Vector DB for semantic search), MinIO (S3 Artifact Storage).
+${tableList}
 
-## Data Flow & Event Driven Architecture
+## Cross-cutting Concerns
 
-1. Client submits run prompt to \`POST /api/v1/runs\`.
-2. Fastify API boots the \`OrchestratorEngine\` pipeline and assigns execution stages.
-3. Agents execute tasks sequentially/parallelly, mutating \`SharedContext\`.
-4. Streaming events (\`LOG\`, \`STEP\`, \`ARTIFACT\`) emit real-time telemetry over WebSockets to client UI.
-5. Produced artifacts are persisted in S3/MinIO artifact storage.
+| Concern | Approach |
+|---|---|
+${capabilityRows}
+
+## Technology Selection
+
+- **HTTP**: Fastify 5 — lowest-overhead Node router with first-class schema hooks.
+- **Validation**: Zod at the edge; request shapes and persisted types share one definition.
+- **Storage**: PostgreSQL 16 — the resource set is relational and benefits from real constraints.
+${blueprint.capabilities.map((c) => `- **${c.label}**: ${c.implication}.`).join('\n')}
+
+## Request Flow
+
+1. Client calls \`/api/<resource>\`.
+2. Zod validates the payload; failures short-circuit with a 400 and an issue list.
+3. The handler reads or writes PostgreSQL within a single transaction.
+4. The response is serialized from the same schema used for validation.
 `;
 
     let architectureMdContent = fallbackArchitectureContent;

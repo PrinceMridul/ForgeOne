@@ -25,6 +25,7 @@ import {
   Cpu,
   Rocket,
   Sparkles,
+  WifiOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -56,7 +57,7 @@ export const Route = createFileRoute("/run")({
 function LiveRun() {
   const { prompt, runId } = Route.useSearch();
   const engine = useLiveEngine();
-  const { agents, playback, metrics, backendRun } = engine;
+  const { agents, playback, metrics, backendRun, connection } = engine;
 
   // Connect to the backend run whenever the runId changes
   useEffect(() => {
@@ -107,10 +108,20 @@ function LiveRun() {
           <div className="hidden md:flex items-center gap-2 ml-2 text-[11px] text-muted-foreground">
             <span className="font-mono">{runId ? runId.slice(0, 8) : "no-run"}</span>
             <span>·</span>
-            {backendRun?.status === "COMPLETED" ? (
+            {connection === "offline" ? (
+              <span
+                className="inline-flex items-center gap-1 text-warning"
+                title="Cannot reach the ForgeOne API. Start it with `pnpm --filter @forgeone/api dev`."
+              >
+                <WifiOff className="h-3 w-3" />
+                API offline
+              </span>
+            ) : backendRun?.status === "COMPLETED" ? (
               <span className="text-success">done</span>
             ) : backendRun?.status === "FAILED" ? (
               <span className="text-destructive">failed</span>
+            ) : connection === "connecting" ? (
+              <span className="text-muted-foreground">connecting…</span>
             ) : runId ? (
               <span className="inline-flex items-center gap-1 text-success">
                 <span className="relative flex h-1.5 w-1.5">

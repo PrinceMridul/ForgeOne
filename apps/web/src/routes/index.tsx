@@ -19,6 +19,8 @@ import {
   AlertTriangle,
   ArrowUpRight,
   Rocket,
+  WifiOff,
+  RefreshCw,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
@@ -153,20 +155,31 @@ function Landing() {
   const [isDispatching, setIsDispatching] = useState(false);
   const [dispatchError, setDispatchError] = useState<string | null>(null);
   const [recentRuns, setRecentRuns] = useState<RunEntry[]>(FALLBACK_RUNS);
+  // null while the first probe is in flight, so nothing flashes on load.
+  const [apiOnline, setApiOnline] = useState<boolean | null>(null);
+  const [apiProbe, setApiProbe] = useState(0);
 
-  // Load real runs from the backend on mount
+  // Load real runs from the backend on mount. A failure here is the earliest
+  // signal that the API isn't up, so surface it rather than silently showing
+  // an empty list that looks like "no runs yet".
   useEffect(() => {
+    let cancelled = false;
     api
       .listRuns()
       .then((runs) => {
+        if (cancelled) return;
+        setApiOnline(true);
         if (runs.length > 0) {
           setRecentRuns(runs.slice(0, 6).map(mapBackendRun));
         }
       })
       .catch(() => {
-        // silently keep the fallback
+        if (!cancelled) setApiOnline(false);
       });
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [apiProbe]);
 
   const dispatch = async (text: string) => {
     const value = text.trim();
@@ -236,6 +249,34 @@ function Landing() {
           Type it out. Hit dispatch. Watch a full engineering team plan, build, review, test,
           secure, and ship it — live, in front of you.
         </p>
+
+        {apiOnline === false && (
+          <div
+            role="status"
+            className="mt-6 mx-auto max-w-2xl flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-left animate-fade-up"
+          >
+            <WifiOff className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-warning">ForgeOne API is not reachable</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                Start it with{" "}
+                <code className="font-mono text-foreground">pnpm --filter @forgeone/api dev</code>.
+                You can still browse the interface, but dispatching a run will fail.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0 gap-1.5"
+              onClick={() => {
+                setApiOnline(null);
+                setApiProbe((n) => n + 1);
+              }}
+            >
+              <RefreshCw className="h-3 w-3" /> Retry
+            </Button>
+          </div>
+        )}
 
         {/* Prompt Box */}
         <form

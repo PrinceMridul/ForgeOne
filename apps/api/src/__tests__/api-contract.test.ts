@@ -185,7 +185,7 @@ describe('ForgeOne Backend API Contract Test Suite', () => {
       const artifactId = 'e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a55';
       const res = await app.inject({ method: 'GET', url: `/api/v1/artifacts/${artifactId}/download` });
       expect(res.statusCode).toBe(200);
-      expect(res.headers['content-type']).toBe('text/markdown');
+      expect(res.headers['content-type']).toBe('text/markdown; charset=utf-8');
       expect(res.body).toContain('ForgeOne Artifact');
     });
   });

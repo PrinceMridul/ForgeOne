@@ -339,6 +339,50 @@ CMD ["node", "dist/index.js"]
   };
 }
 
+export interface RepositoryStats {
+  fileCount: number;
+  lineCount: number;
+  byLanguage: Record<string, number>;
+  sourceFiles: string[];
+  routeFiles: string[];
+  testFiles: string[];
+  /** Number of `it(...)` cases across the generated test files. */
+  testCases: number;
+}
+
+/**
+ * Measure what the Developer actually emitted, so the downstream agents can
+ * report real figures instead of invented ones.
+ */
+export function summarizeRepository(
+  files: Array<{ path: string; content: string }>,
+): RepositoryStats {
+  const byLanguage: Record<string, number> = {};
+  let lineCount = 0;
+  let testCases = 0;
+
+  for (const file of files) {
+    const ext = file.path.includes('.') ? file.path.slice(file.path.lastIndexOf('.') + 1) : 'other';
+    byLanguage[ext] = (byLanguage[ext] ?? 0) + 1;
+    lineCount += file.content.split('\n').length;
+    if (file.path.includes('.spec.') || file.path.startsWith('tests/')) {
+      testCases += (file.content.match(/\bit\(/g) ?? []).length;
+    }
+  }
+
+  return {
+    fileCount: files.length,
+    lineCount,
+    byLanguage,
+    sourceFiles: files.filter((f) => f.path.endsWith('.ts')).map((f) => f.path),
+    routeFiles: files.filter((f) => f.path.startsWith('src/routes/')).map((f) => f.path),
+    testFiles: files
+      .filter((f) => f.path.includes('.spec.') || f.path.startsWith('tests/'))
+      .map((f) => f.path),
+    testCases,
+  };
+}
+
 /** Render the full baseline repository for a blueprint. */
 export function scaffoldRepository(blueprint: ProjectBlueprint): ScaffoldFile[] {
   return [

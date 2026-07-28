@@ -76,6 +76,7 @@ export function inferArtifactType(filename: string, agentType: AgentType): strin
     case 'DeploymentPlan.md':
       return 'DEPLOYMENT_PLAN';
     case 'README.md':
+    case 'ProjectOverview.md':
       return 'README';
     case 'SummaryReport.md':
       return 'SUMMARY_REPORT';

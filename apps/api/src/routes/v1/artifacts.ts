@@ -138,8 +138,12 @@ export const artifactRoutes: FastifyPluginAsync = async (fastify) => {
               .header('Content-Length', buf.length.toString())
               .send(buf);
           }
+          const charset =
+            art.mimeType.startsWith('text/') || art.mimeType === 'application/json'
+              ? `${art.mimeType}; charset=utf-8`
+              : art.mimeType;
           return reply
-            .header('Content-Type', art.mimeType)
+            .header('Content-Type', charset)
             .header('Content-Disposition', `attachment; filename="${art.filename}"`)
             .send(art.content);
         }
@@ -147,7 +151,7 @@ export const artifactRoutes: FastifyPluginAsync = async (fastify) => {
 
       const content = `# ForgeOne Artifact ${id}\n\nMock content generated for API contract integration test.`;
       return reply
-        .header('Content-Type', 'text/markdown')
+        .header('Content-Type', 'text/markdown; charset=utf-8')
         .header('Content-Disposition', `attachment; filename="${mockArtifact.filename}"`)
         .send(content);
     },

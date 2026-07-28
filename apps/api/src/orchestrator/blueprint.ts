@@ -126,7 +126,7 @@ const ENTITY_RULES: Array<{ match: string[]; name: string; fields: BlueprintFiel
   { match: ['channel'], name: 'channel', fields: [f('name'), f('topic'), f('isPrivate', 'boolean')] },
   { match: ['thread'], name: 'thread', fields: [f('parentId', 'uuid'), f('title'), f('replyCount', 'number')] },
   { match: ['message', 'chat', 'messaging'], name: 'message', fields: [f('body'), f('authorId', 'uuid'), f('sentAt', 'timestamp')] },
-  { match: ['document', 'docs', 'doc ', 'notion'], name: 'document', fields: [f('title'), f('body'), f('ownerId', 'uuid')] },
+  { match: ['document', 'docs', 'doc', 'notion'], name: 'document', fields: [f('title'), f('body'), f('ownerId', 'uuid')] },
   { match: ['page'], name: 'page', fields: [f('title'), f('slug'), f('body')] },
   { match: ['comment'], name: 'comment', fields: [f('body'), f('authorId', 'uuid')] },
   { match: ['board', 'kanban'], name: 'board', fields: [f('name'), f('columnOrder')] },
@@ -138,14 +138,14 @@ const ENTITY_RULES: Array<{ match: string[]; name: string; fields: BlueprintFiel
   { match: ['order', 'cart', 'checkout'], name: 'order', fields: [f('status'), f('totalCents', 'number'), f('placedAt', 'timestamp')] },
   { match: ['subscription', 'billing', 'seat'], name: 'subscription', fields: [f('plan'), f('status'), f('renewsAt', 'timestamp')] },
   { match: ['invoice'], name: 'invoice', fields: [f('number'), f('amountCents', 'number'), f('paidAt', 'timestamp')] },
-  { match: ['video', 'conferenc', 'zoom', 'call', 'webrtc'], name: 'room', fields: [f('name'), f('startedAt', 'timestamp'), f('participantCount', 'number')] },
+  { match: ['video', 'conferencing', 'conference', 'zoom', 'call', 'webrtc'], name: 'room', fields: [f('name'), f('startedAt', 'timestamp'), f('participantCount', 'number')] },
   { match: ['recording'], name: 'recording', fields: [f('roomId', 'uuid'), f('durationSeconds', 'number'), f('url')] },
   { match: ['whiteboard', 'canvas', 'excalidraw', 'figma'], name: 'canvas', fields: [f('name'), f('sceneVersion', 'number')] },
   { match: ['shape', 'stroke'], name: 'shape', fields: [f('canvasId', 'uuid'), f('kind'), f('payload')] },
   { match: ['dashboard'], name: 'dashboard', fields: [f('name'), f('layout')] },
   { match: ['widget'], name: 'widget', fields: [f('dashboardId', 'uuid'), f('kind'), f('config')] },
   { match: ['event', 'analytics'], name: 'event', fields: [f('kind'), f('payload'), f('occurredAt', 'timestamp')] },
-  { match: ['workspace', 'team', 'organization', 'org '], name: 'workspace', fields: [f('name'), f('slug')] },
+  { match: ['workspace', 'team', 'organization', 'org'], name: 'workspace', fields: [f('name'), f('slug')] },
   { match: ['user', 'member', 'people', 'account'], name: 'user', fields: [f('email'), f('displayName'), f('avatarUrl')] },
   { match: ['note'], name: 'note', fields: [f('title'), f('body')] },
   { match: ['post', 'feed', 'social'], name: 'post', fields: [f('body'), f('authorId', 'uuid'), f('likeCount', 'number')] },
@@ -156,6 +156,20 @@ const ENTITY_RULES: Array<{ match: string[]; name: string; fields: BlueprintFiel
 
 function f(name: string, type: BlueprintField['type'] = 'string'): BlueprintField {
   return { name, type };
+}
+
+/**
+ * Whole-word match allowing a plural or gerund suffix.
+ *
+ * Resource keywords must not match inside longer words: a plain substring
+ * test made "Postgres" match the `post` rule, so a docs app came back with a
+ * `posts` resource it never asked for. Capability keywords keep using
+ * substring matching because several of them are deliberate stems
+ * ("collaborat", "recommend").
+ */
+function matchesWord(haystack: string, keyword: string): boolean {
+  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`\\b${escaped}(s|es|ing)?\\b`).test(haystack);
 }
 
 /** Verbs and filler that should never appear in a repository name. */
@@ -213,7 +227,7 @@ export function deriveBlueprint(title: string, description: string): ProjectBlue
   const entities: BlueprintEntity[] = [];
   for (const rule of ENTITY_RULES) {
     if (seen.has(rule.name)) continue;
-    if (rule.match.some((kw) => source.includes(kw))) {
+    if (rule.match.some((kw) => matchesWord(source, kw))) {
       seen.add(rule.name);
       entities.push({
         name: rule.name,

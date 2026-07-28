@@ -227,7 +227,8 @@ function SummaryCard({ build }: { build: ReturnType<typeof useBuildVerification>
         </span>
         <p className="text-sm font-medium">Build summary</p>
         <span className="ml-auto text-[10px] font-mono text-muted-foreground">
-          run_482 · sha 4c9e1a2
+          {runningRunId ? `${runningRunId.slice(0, 8)} · ` : ""}
+          {build.sha ? `sha ${build.sha}` : "unsigned"}
         </span>
       </div>
 

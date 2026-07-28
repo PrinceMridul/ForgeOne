@@ -27,8 +27,10 @@ export class ArchitectAgent implements IAgent {
     const blueprint = context.get<ReturnType<typeof deriveBlueprint>>('blueprint')
       ?? deriveBlueprint(context.title, context.description);
 
+    const resourceCount = blueprint.entities.length;
+    const concernCount = blueprint.capabilities.length;
     emitEvent(
-      `Deriving topology for ${blueprint.entities.length} resources and ${blueprint.capabilities.length} cross-cutting concerns.`,
+      `Deriving topology for ${resourceCount} ${resourceCount === 1 ? 'resource' : 'resources'} and ${concernCount} cross-cutting ${concernCount === 1 ? 'concern' : 'concerns'}.`,
       'LOG',
     );
 

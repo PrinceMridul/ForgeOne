@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Agent, ActivityEvent } from "./mock-data";
-import { api } from "./api-client";
+import { api, ApiError } from "./api-client";
 import type { WorkflowRun, ExecutionEvent, BackendArtifact } from "./api-client";
 import { resetBuildVerification } from "./build-verification";
 
@@ -35,8 +35,14 @@ export type { Agent, ActivityEvent };
 
 export type LogLevel = "info" | "warn" | "error" | "debug";
 
-/** `idle` — no run attached. `connecting` — attached, first poll outstanding. */
-export type ConnectionState = "idle" | "connecting" | "live" | "offline";
+/**
+ * `idle` — no run attached. `connecting` — attached, first poll outstanding.
+ * `missing` — the API answered but has no such run, which is the normal
+ * outcome for a shared or bookmarked URL after the server restarted, since
+ * runs are held in memory. Distinct from `offline` so we don't send someone
+ * debugging a healthy API.
+ */
+export type ConnectionState = "idle" | "connecting" | "live" | "offline" | "missing";
 
 export interface LogLine {
   id: string;
@@ -758,6 +764,14 @@ async function poll(): Promise<void> {
       stopPolling();
     }
   } catch (err) {
+    // A 404 means the API is healthy and the run simply isn't there — retrying
+    // will never help, so stop rather than hammering the endpoint.
+    if (err instanceof ApiError && err.status === 404) {
+      stopPolling();
+      state = { ...state, isConnected: false, connection: "missing" };
+      emit();
+      return;
+    }
     console.error("[ForgeOne engine] poll failed:", err);
     state = { ...state, isConnected: false, connection: "offline" };
     emit();

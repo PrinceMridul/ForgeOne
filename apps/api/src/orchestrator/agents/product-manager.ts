@@ -18,8 +18,9 @@ export class ProductManagerAgent implements IAgent {
     const blueprint = deriveBlueprint(context.title, context.description);
     context.set('blueprint', blueprint);
 
+    const resourceCount = blueprint.entities.length;
     emitEvent(
-      `Decomposing "${context.title}" — identified ${blueprint.entities.length} core resources (${blueprint.entities.map((e) => e.plural).join(', ')}).`,
+      `Decomposing "${context.title}" — identified ${resourceCount} core ${resourceCount === 1 ? 'resource' : 'resources'} (${blueprint.entities.map((e) => e.plural).join(', ')}).`,
       'LOG',
     );
     if (blueprint.capabilities.length > 0) {

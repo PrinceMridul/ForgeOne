@@ -62,6 +62,28 @@ describe('Prompt-derived Project Blueprint', () => {
       expect(chat.entities.map((e) => e.name)).not.toEqual(shop.entities.map((e) => e.name));
     });
 
+    it('does not match a resource keyword inside a longer word', () => {
+      // "Postgres" contains "post"; a substring match produced a bogus
+      // `posts` resource for a documents app.
+      const bp = deriveBlueprint(
+        'Build a Notion-style docs app with realtime cursors, comments, and a Postgres backend',
+        'Collaborative documents',
+      );
+      const names = bp.entities.map((e) => e.name);
+      expect(names).toContain('document');
+      expect(names).toContain('comment');
+      expect(names).not.toContain('post');
+    });
+
+    it('still matches plural and gerund forms of a resource keyword', () => {
+      const plural = deriveBlueprint('Ship a chat with channels', 'threads and messages');
+      expect(plural.entities.map((e) => e.name)).toContain('channel');
+
+      const gerund = deriveBlueprint('Prototype a video conferencing app', 'rooms and recordings');
+      expect(gerund.entities.map((e) => e.name)).toContain('room');
+      expect(gerund.entities.map((e) => e.name)).toContain('recording');
+    });
+
     it('always yields at least one resource, even for an unrecognisable prompt', () => {
       const bp = deriveBlueprint('zzzz', 'qqqq');
       expect(bp.entities.length).toBeGreaterThan(0);

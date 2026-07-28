@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { useEffect } from "react";
 import { useLiveEngine, setPlayback, connectToRun, disconnectFromRun } from "@/lib/live-engine";
+import { api } from "@/lib/api-client";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { AgentCard } from "@/components/agent-card";
@@ -89,6 +90,10 @@ function LiveRun() {
       )
     : 0;
   const runtime = `${String(Math.floor(runtimeSec / 60)).padStart(2, "0")}:${String(runtimeSec % 60).padStart(2, "0")}`;
+
+  // Gate the ship action on the artifact existing, not on a progress number.
+  const deploymentPlanReady =
+    Boolean(runId) && engine.artifacts.some((a) => a.name === "DeploymentPlan.md");
 
   const displayPrompt =
     prompt || "Build a Notion-style docs app with realtime cursors and a Postgres backend.";
@@ -292,10 +297,29 @@ function LiveRun() {
               <p className="text-sm font-medium">Ship it</p>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              When the team finishes, promote this run to staging with one click.
+              {deploymentPlanReady
+                ? "Orion wrote the rollout order, compose topology and required environment for this build."
+                : "When DevOps finishes, the rollout plan for this build lands here."}
             </p>
-            <Button size="sm" className="mt-3 w-full gap-1.5" disabled={overall < 100}>
-              {overall < 100 ? `Working · ${overall}%` : "Deploy to staging"}
+            {/* Hands off the artifact DevOps actually produced rather than
+                claiming to deploy something. */}
+            <Button
+              size="sm"
+              className="mt-3 w-full gap-1.5"
+              disabled={!deploymentPlanReady}
+              asChild={deploymentPlanReady}
+            >
+              {deploymentPlanReady ? (
+                <a
+                  href={api.artifactDownloadUrl(runId, "DeploymentPlan.md")}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Rocket className="h-3.5 w-3.5" /> Open deployment plan
+                </a>
+              ) : (
+                <span>Working · {overall}%</span>
+              )}
             </Button>
           </div>
         </aside>

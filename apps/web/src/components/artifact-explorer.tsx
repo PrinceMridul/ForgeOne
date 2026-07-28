@@ -11,12 +11,14 @@ import {
   Database,
   ImageIcon,
   FileCode2,
+  Braces,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const kindIcon: Record<Artifact["kind"], any> = {
   build: Package,
+  code: Braces,
   test: TestTube2,
   security: ShieldCheck,
   spec: FileCode2,
@@ -27,6 +29,7 @@ const kindIcon: Record<Artifact["kind"], any> = {
 
 const kindTint: Record<Artifact["kind"], string> = {
   build: "text-primary bg-primary/10 border-primary/20",
+  code: "text-chart-1 bg-chart-1/10 border-chart-1/20",
   test: "text-chart-2 bg-chart-2/10 border-chart-2/20",
   security: "text-destructive bg-destructive/10 border-destructive/20",
   spec: "text-chart-4 bg-chart-4/10 border-chart-4/20",
@@ -37,6 +40,7 @@ const kindTint: Record<Artifact["kind"], string> = {
 
 const FILTERS: (Artifact["kind"] | "all")[] = [
   "all",
+  "code",
   "build",
   "test",
   "security",

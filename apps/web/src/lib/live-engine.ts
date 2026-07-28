@@ -64,7 +64,7 @@ export interface Artifact {
   id: string;
   runId: string;
   name: string;
-  kind: "build" | "test" | "security" | "spec" | "db" | "doc" | "image";
+  kind: "build" | "code" | "test" | "security" | "spec" | "db" | "doc" | "image";
   size: string;
   when: string;
   agent: string;
@@ -375,13 +375,27 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1_048_576).toFixed(1)} MB`;
 }
 
+/**
+ * Classify an artifact for the explorer's filter chips and badges.
+ *
+ * Order matters: specs end in `.ts` too, so they must be matched before the
+ * source-code rule. Without a `code` kind every generated `.ts` file fell
+ * through to `doc`, which made the filters useless and labelled source files
+ * as documents.
+ */
 function mimeToKind(mimeType: string, filename: string): Artifact["kind"] {
-  if (filename.endsWith(".zip") || filename.endsWith(".tar.gz")) return "build";
-  if (filename.includes("coverage") && filename.endsWith(".html")) return "test";
-  if (filename.includes("sast") || filename.includes("security")) return "security";
-  if (filename.endsWith(".yaml") || filename.endsWith(".json")) return "spec";
-  if (filename.endsWith(".sql")) return "db";
-  if (filename.endsWith(".md")) return "doc";
+  const lower = filename.toLowerCase();
+  if (lower.endsWith(".zip") || lower.endsWith(".tar.gz")) return "build";
+  if (lower.includes("coverage") && lower.endsWith(".html")) return "test";
+  if (lower.startsWith("tests/") || lower.includes(".spec.") || lower.includes(".test."))
+    return "test";
+  if (lower.includes("sast") || lower.includes("security")) return "security";
+  if (lower.endsWith(".sql")) return "db";
+  if (lower.endsWith(".yaml") || lower.endsWith(".yml") || lower.endsWith(".json")) return "spec";
+  if (lower === "dockerfile" || lower.endsWith("/dockerfile") || lower.endsWith(".toml"))
+    return "spec";
+  if (/\.(tsx?|jsx?|mjs|cjs|py|go|rs|rb|java)$/.test(lower)) return "code";
+  if (lower.endsWith(".md")) return "doc";
   if (mimeType.startsWith("image/")) return "image";
   return "doc";
 }

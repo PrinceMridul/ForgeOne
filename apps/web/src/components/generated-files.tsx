@@ -72,6 +72,45 @@ function iconFor(path: string, lang: string) {
   return FileCode2;
 }
 
+/** Mirrors the verb/filler list the API strips when naming a repository. */
+const TITLE_STOPWORDS = new Set([
+  "build",
+  "ship",
+  "create",
+  "design",
+  "prototype",
+  "add",
+  "make",
+  "develop",
+  "implement",
+  "an",
+  "the",
+  "with",
+  "and",
+  "for",
+  "on",
+  "of",
+  "to",
+  "in",
+  "using",
+  "that",
+  "my",
+  "app",
+  "application",
+  "platform",
+  "system",
+  "tool",
+  "service",
+  "website",
+  "site",
+  "clone",
+  "style",
+  "like",
+  "top",
+  "its",
+  "some",
+]);
+
 /**
  * The repository's own package.json is the source of truth for its name, so
  * the tree is labelled with what the Developer actually produced rather than
@@ -243,14 +282,15 @@ export function GeneratedFiles({ height = 440 }: { height?: number }) {
   }, [repoZipped, build.endedAt, zipped, collapsing, emitted.length]);
 
   // Until package.json streams in, fall back to a slug of the run title so the
-  // panel never shows an unrelated project name.
+  // panel never shows an unrelated project name. Drops the same imperative
+  // verbs and filler the backend strips, so the interim label matches the
+  // final one closely rather than reading "ship-a-slack".
   const fallbackName = useMemo(() => {
     const slug = (backendRun?.title ?? "")
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .split("-")
-      .filter(Boolean)
+      .replace(/[^a-z0-9]+/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 1 && !TITLE_STOPWORDS.has(w))
       .slice(0, 3)
       .join("-");
     return slug || "repository";

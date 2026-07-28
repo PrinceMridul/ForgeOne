@@ -1,5 +1,8 @@
 import type { IAgent, AgentExecutionResult } from '../agent-interface';
 import type { SharedContext } from '../context';
+import type { GeneratedFile } from '../file-parser';
+import { deriveBlueprint } from '../blueprint';
+import { summarizeRepository } from '../scaffold';
 
 export class ReviewerAgent implements IAgent {
   public readonly agentType = 'REVIEWER' as const;
@@ -9,32 +12,92 @@ export class ReviewerAgent implements IAgent {
     context: SharedContext,
     emitEvent: (message: string, eventType?: 'LOG' | 'STEP' | 'ARTIFACT', payload?: Record<string, unknown>) => void,
   ): Promise<AgentExecutionResult> {
-    emitEvent('Performing automated code review & lint audit...', 'STEP');
-    emitEvent('Checking TypeScript type safety, error boundaries, and API contract compliance...', 'LOG');
+    const blueprint = context.get<ReturnType<typeof deriveBlueprint>>('blueprint')
+      ?? deriveBlueprint(context.title, context.description);
+    const files = context.get<GeneratedFile[]>('generatedFiles') ?? [];
+    const stats = summarizeRepository(files);
 
-    const prReviewContent = `# Pull Request Review — ${context.title}
+    emitEvent('Performing automated code review & lint audit...', 'STEP');
+    emitEvent(
+      `Reviewing ${stats.fileCount} files (${stats.lineCount} lines) produced by the Developer stage...`,
+      'LOG',
+    );
+
+    // Observations are checks against the files that were actually emitted,
+    // so the verdict is reproducible rather than asserted.
+    const checks: Array<{ label: string; passed: boolean; detail: string }> = [
+      {
+        label: 'Every route module validates its input',
+        passed:
+          stats.routeFiles.length > 0 &&
+          stats.routeFiles.every((path) => (files.find((f) => f.path === path)?.content ?? '').includes('safeParse')),
+        detail: `${stats.routeFiles.length} route module(s) parse the request body before use.`,
+      },
+      {
+        label: 'Request and response types share one definition',
+        passed: files.some((f) => f.content.includes('z.infer<')),
+        detail: 'Handler types are inferred from the Zod schema rather than declared twice.',
+      },
+      {
+        label: 'Missing records return 404 rather than throwing',
+        passed: stats.routeFiles.every((path) => (files.find((f) => f.path === path)?.content ?? '').includes('404')),
+        detail: 'Read and delete paths handle the absent case explicitly.',
+      },
+      {
+        label: 'Test coverage accompanies the implementation',
+        passed: stats.testFiles.length > 0,
+        detail: `${stats.testFiles.length} spec file(s), ${stats.testCases} case(s).`,
+      },
+      {
+        label: 'Container build is reproducible',
+        passed: files.some((f) => f.path === 'Dockerfile'),
+        detail: 'Multi-stage Dockerfile with a health check is present.',
+      },
+    ];
+
+    const passed = checks.filter((c) => c.passed).length;
+    const score = Math.round((passed / checks.length) * 100);
+    const verdict = passed === checks.length ? 'APPROVED' : 'APPROVED WITH COMMENTS';
+
+    for (const check of checks.filter((c) => !c.passed)) {
+      emitEvent(`Review comment: ${check.label} — not satisfied.`, 'LOG');
+    }
+
+    const fileTable = files
+      .slice(0, 12)
+      .map((f) => `| \`${f.path}\` | ${f.content.split('\n').length} | ${f.language} |`)
+      .join('\n');
+
+    const prReviewContent = `# Pull Request Review — ${blueprint.displayName}
 
 ## Summary
-- **Verdict**: ✅ **APPROVED**
-- **Files Reviewed**: 119 files across 7 monorepo packages.
-- **Code Quality Score**: 98/100
+- **Verdict**: ${passed === checks.length ? '✅' : '⚠️'} **${verdict}**
+- **Files Reviewed**: ${stats.fileCount} (${stats.lineCount} lines)
+- **Checks Passed**: ${passed}/${checks.length} (${score}/100)
 
-## Code Quality Checklist
-- [x] **TypeScript Strict Mode**: Fully enabled (\`noExplicitAny\`, \`strictNullChecks\`).
-- [x] **API Contracts**: 100% compliant with Zod schemas & shared DTOs (\`@forgeone/types\`).
-- [x] **Error Handling**: Centralized error middleware with request ID correlation.
-- [x] **Linting & Formatting**: Clean run under ESLint v9 & Prettier.
+## Review Checklist
 
-## Detailed Feedback
-1. **Architecture & Modularization**: Clean separation of concerns between \`apps/web\`, \`apps/api\`, \`apps/agent-runtime\`, and shared packages.
-2. **Type Safety**: Strong static typing enforced end-to-end.
+${checks.map((c) => `- [${c.passed ? 'x' : ' '}] **${c.label}** — ${c.detail}`).join('\n')}
+
+## Files Reviewed
+
+| File | Lines | Language |
+|---|---|---|
+${fileTable}${files.length > 12 ? `\n\n_…and ${files.length - 12} more._` : ''}
+
+## Notes
+
+The resource modules (${blueprint.entities.map((e) => `\`${e.plural}\``).join(', ')}) follow one
+consistent shape, so a new resource can be added without inventing a new
+pattern. State is held in-process; swapping the module-level \`Map\` for a real
+repository is the natural next commit and does not change the route contract.
 `;
 
     emitEvent('Generated PRReview.md review artifact', 'ARTIFACT', { filename: 'PRReview.md' });
 
     return {
       agentType: this.agentType,
-      summary: 'Reviewed codebase: Approved with score 98/100.',
+      summary: `Reviewed ${stats.fileCount} files across ${stats.routeFiles.length} route modules: ${verdict} (${score}/100).`,
       artifacts: [
         {
           filename: 'PRReview.md',

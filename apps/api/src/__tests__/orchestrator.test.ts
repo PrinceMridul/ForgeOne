@@ -98,7 +98,9 @@ describe('ForgeOne Autonomous Orchestration Engine Test Suite', () => {
       });
 
       expect(res.statusCode).toBe(200);
-      expect(res.headers['content-type']).toBe('text/markdown');
+      // Charset must be explicit — artifacts contain em-dashes and glyphs that
+      // render as mojibake if a client falls back to latin-1.
+      expect(res.headers['content-type']).toBe('text/markdown; charset=utf-8');
       expect(res.body).toContain('System Architecture Blueprint');
 
       // The blueprint must describe the project that was actually requested.

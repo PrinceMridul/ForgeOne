@@ -11,6 +11,15 @@ import {
 } from '../../schemas/runs';
 import { createApiResponseSchema, paginationQuerySchema, idParamSchema } from '../../schemas/common';
 
+/** Text payloads must declare UTF-8 or clients may decode them as latin-1. */
+function withUtf8Charset(mimeType: string): string {
+  if (mimeType.includes('charset')) return mimeType;
+  if (mimeType.startsWith('text/') || mimeType === 'application/json') {
+    return `${mimeType}; charset=utf-8`;
+  }
+  return mimeType;
+}
+
 export const runRoutes: FastifyPluginAsync = async (fastify) => {
   const app = fastify.withTypeProvider<ZodTypeProvider>();
   const runManager = RunManager.getInstance();
@@ -213,8 +222,11 @@ export const runRoutes: FastifyPluginAsync = async (fastify) => {
           .send(buf);
       }
 
+      // Artifacts are UTF-8 and routinely contain em-dashes and status glyphs.
+      // Without an explicit charset a browser may fall back to latin-1 and
+      // render them as mojibake.
       return reply
-        .header('Content-Type', artifact.mimeType)
+        .header('Content-Type', withUtf8Charset(artifact.mimeType))
         .header('Content-Disposition', `attachment; filename="${artifact.filename}"`)
         .send(artifact.content);
     },

@@ -1,5 +1,8 @@
 import type { IAgent, AgentExecutionResult } from '../agent-interface';
 import type { SharedContext } from '../context';
+import type { GeneratedFile } from '../file-parser';
+import { deriveBlueprint } from '../blueprint';
+import { summarizeRepository } from '../scaffold';
 
 export class DocumentationAgent implements IAgent {
   public readonly agentType = 'DOCUMENTATION' as const;
@@ -9,69 +12,112 @@ export class DocumentationAgent implements IAgent {
     context: SharedContext,
     emitEvent: (message: string, eventType?: 'LOG' | 'STEP' | 'ARTIFACT', payload?: Record<string, unknown>) => void,
   ): Promise<AgentExecutionResult> {
-    emitEvent('Synthesizing documentation from project execution context...', 'STEP');
-    emitEvent('Writing production README.md and SummaryReport.md...', 'LOG');
+    const blueprint = context.get<ReturnType<typeof deriveBlueprint>>('blueprint')
+      ?? deriveBlueprint(context.title, context.description);
+    const files = context.get<GeneratedFile[]>('generatedFiles') ?? [];
+    const stats = summarizeRepository(files);
 
-    const readmeContent = `<div align="center">
+    emitEvent('Synthesizing documentation from the artifacts produced upstream...', 'STEP');
+    emitEvent(`Indexing ${stats.fileCount} generated files and ${context.getArtifacts().length} pipeline artifacts...`, 'LOG');
 
-# 🔨 ${context.title}
+    // The Developer already emits the repository's own README.md. Emitting a
+    // second file under that exact name produced two same-named rows in the
+    // artifact list and let this one shadow the repo README in the file tree,
+    // so the run-level index ships as ProjectOverview.md instead.
+    const overviewContent = `# ${blueprint.displayName}
 
-**Your Autonomous Software Engineering Team**
+${blueprint.summary}
 
-*An AI-native engineering workspace where autonomous software engineering agents collaborate to transform ideas and repositories into production-ready software.*
+## What was produced
 
-</div>
+A \`${blueprint.name}\` service — ${stats.fileCount} files, ${stats.lineCount} lines — exposing
+${blueprint.entities.length} resource route group(s) with schema validation, a SQL schema, specs
+and a container build.
 
----
+### Resources
 
-## Overview
+| Route | Fields |
+|---|---|
+${blueprint.entities.map((e) => `| \`/api/${e.plural}\` | ${e.fields.map((f) => `\`${f.name}\``).join(', ')} |`).join('\n')}
 
-${context.description}
+${
+  blueprint.capabilities.length > 0
+    ? `### Capabilities\n\n${blueprint.capabilities.map((c) => `- **${c.label}** — ${c.implication}`).join('\n')}`
+    : ''
+}
 
-## Generated Artifacts
-
-- **Architecture**: [Architecture.md](Architecture.md)
-- **Task Decomposition**: [Tasks.json](Tasks.json)
-- **Code Review**: [PRReview.md](PRReview.md)
-- **Test Report**: [TestReport.md](TestReport.md)
-- **Security Audit**: [SecurityAudit.md](SecurityAudit.md)
-- **Deployment Plan**: [DeploymentPlan.md](DeploymentPlan.md)
-
-## Quick Start
+## Run it
 
 \`\`\`bash
-make setup
-make infra
-make dev
+npm install
+npm run dev
+curl http://localhost:4000/health
 \`\`\`
+
+## Pipeline artifacts
+
+| Artifact | Produced by |
+|---|---|
+| [PRD.md](PRD.md) | Product Manager |
+| [Tasks.json](Tasks.json) | Product Manager |
+| [Architecture.md](Architecture.md) | Architect |
+| [Repository.zip](Repository.zip) | Developer |
+| [PRReview.md](PRReview.md) | Reviewer |
+| [TestReport.md](TestReport.md) | Tester |
+| [SecurityAudit.md](SecurityAudit.md) | Security |
+| [DeploymentPlan.md](DeploymentPlan.md) | DevOps |
+| [SummaryReport.md](SummaryReport.md) | Documentation |
 `;
 
-    const summaryReportContent = `# Autonomous Execution Summary Report — ${context.title}
+    const summaryReportContent = `# Execution Summary — ${blueprint.displayName}
 
-## Execution Lifecycle
-1. **Product Manager**: Decomposed project into epics & tasks (\`Tasks.json\`).
-2. **Architect**: Formulated system design blueprint (\`Architecture.md\`).
-3. **Developer**: Implemented application code & Fastify routes.
-4. **Reviewer**: Performed static review & approved PR (\`PRReview.md\`).
-5. **Tester**: Executed 19 unit & integration tests (\`TestReport.md\`).
-6. **Security**: Audited security safeguards (\`SecurityAudit.md\`).
-7. **DevOps**: Configured containerized deployment plan (\`DeploymentPlan.md\`).
-8. **Documentation**: Generated project README & documentation.
+## Request
 
-## Status: COMPLETE ✅
+> ${blueprint.summary}
+
+## Interpretation
+
+The prompt was resolved to **${blueprint.entities.length} core resource(s)** —
+${blueprint.entities.map((e) => `\`${e.plural}\``).join(', ')} — and
+**${blueprint.capabilities.length} cross-cutting capability(ies)**${
+      blueprint.capabilities.length > 0
+        ? `: ${blueprint.capabilities.map((c) => c.label).join(', ')}`
+        : ''
+    }. Those choices drove the schema, the route surface and the dependency set.
+
+## Pipeline
+
+| Stage | Outcome |
+|---|---|
+| Product Manager | PRD and task breakdown scoped to the resources above |
+| Architect | Service topology and data model |
+| Developer | ${stats.fileCount} files, ${stats.lineCount} lines, ${stats.routeFiles.length} route module(s) |
+| Reviewer | Static review against the emitted files |
+| Tester | ${stats.testCases} test case(s) across ${stats.testFiles.length} spec file(s) |
+| Security | Dependency and static audit with severity-ranked findings |
+| DevOps | Container image, compose topology and rollout order |
+| Documentation | This summary and the repository index |
+
+## Honest Limitations
+
+- Persistence is in-process; the SQL schema is emitted but not yet wired to the handlers.
+- The security audit reports real gaps rather than a clean bill of health — read it before deploying.
+- Generated specs cover handler behaviour, not durability or concurrency.
+
+## Status: COMPLETE
 `;
 
-    emitEvent('Generated README.md artifact', 'ARTIFACT', { filename: 'README.md' });
+    emitEvent('Generated ProjectOverview.md artifact', 'ARTIFACT', { filename: 'ProjectOverview.md' });
     emitEvent('Generated SummaryReport.md artifact', 'ARTIFACT', { filename: 'SummaryReport.md' });
 
     return {
       agentType: this.agentType,
-      summary: 'Generated project README.md and final Autonomous Execution Summary Report.',
+      summary: `Documented ${blueprint.name}: project overview and execution summary covering ${stats.fileCount} files.`,
       artifacts: [
         {
-          filename: 'README.md',
+          filename: 'ProjectOverview.md',
           mimeType: 'text/markdown',
-          content: readmeContent,
+          content: overviewContent,
         },
         {
           filename: 'SummaryReport.md',

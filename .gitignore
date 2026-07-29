@@ -35,6 +35,10 @@ __pycache__/
 *$py.class
 *.egg-info/
 *.egg
+# Downloaded run artifacts kept for manual comparison across prompts.
+# Useful demo evidence, but not source — left on disk, out of future commits.
+output/
+
 logs/
 *.log
 npm-debug.log*

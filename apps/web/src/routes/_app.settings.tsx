@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Breadcrumb } from "@/components/breadcrumb";
+import { SampleDataNotice } from "@/components/sample-data-notice";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -41,6 +42,8 @@ function SettingsPage() {
         title="Settings"
         description="Manage models, appearance, workspace, and secrets."
       />
+
+      <SampleDataNotice detail="These controls are not yet persisted. The API selects its LLM provider from the process environment — set an API key there and the Developer agent uses it for real code generation." />
 
       <Tabs defaultValue="models">
         <TabsList>
@@ -186,10 +189,13 @@ function PrefRow({
 }
 
 function EnvironmentVariables() {
+  // Deliberately unmistakable placeholders. These previously read as live
+  // production credentials (`sk_live_…`), which looks careless on a screen a
+  // reviewer will open even though the values were always masked.
   const [vars, setVars] = useState([
-    { key: "DATABASE_URL", value: "postgres://***@db.forge.dev/meridian" },
-    { key: "STRIPE_SECRET_KEY", value: "sk_live_***********************" },
-    { key: "OPENAI_API_KEY", value: "sk-***********************" },
+    { key: "DATABASE_URL", value: "postgres://user:password@localhost:5432/appdb" },
+    { key: "STRIPE_SECRET_KEY", value: "sk_test_example_not_a_real_key" },
+    { key: "ANTHROPIC_API_KEY", value: "sk-ant-example-not-a-real-key" },
   ]);
   const [reveal, setReveal] = useState<Record<number, boolean>>({});
 
@@ -199,8 +205,12 @@ function EnvironmentVariables() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Environment variables</CardTitle>
+            {/* Was "Injected into every agent run. Values are encrypted at
+                rest." — neither is implemented, so it claimed behaviour the
+                system does not have. */}
             <CardDescription>
-              Injected into every agent run. Values are encrypted at rest.
+              Editor only — this screen is not yet wired to the run environment. The API reads its
+              own configuration from the process environment.
             </CardDescription>
           </div>
           <Button

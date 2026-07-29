@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { createFileRoute, notFound, Link } from "@tanstack/react-router";
 import { Breadcrumb } from "@/components/breadcrumb";
+import { SampleDataNotice } from "@/components/sample-data-notice";
 import { projects, type FileNode } from "@/lib/mock-data";
 import { useLiveEngine } from "@/lib/live-engine";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -96,6 +97,8 @@ function ProjectWorkspace() {
   return (
     <div className="mx-auto max-w-7xl px-6 py-8 space-y-6">
       <Breadcrumb items={[{ label: "Projects", to: "/dashboard" }, { label: project.name }]} />
+
+      <SampleDataNotice detail="Project metadata on this page is illustrative. The file tree below shows the repository from the most recent live run." />
 
       {/* Header card */}
       <div className="surface p-6 shadow-card">

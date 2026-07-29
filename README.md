@@ -23,50 +23,94 @@ ForgeOne is a multi-agent AI platform that orchestrates specialized software eng
 
 ### Agent Team
 
-| Agent | Role |
-|---|---|
-| 🎯 **Orchestrator** | Decomposes tasks, coordinates agents, manages workflow state |
-| 📋 **Product Manager** | Translates ideas into specs, writes user stories |
-| 🏗️ **Architect** | Designs systems, selects technologies, defines APIs |
-| 💻 **Developer** | Writes, refactors, and modifies code |
-| 🔍 **Reviewer** | Reviews code quality, enforces best practices |
-| 🧪 **Tester** | Generates tests, analyzes coverage, detects regressions |
-| 🔒 **Security** | Audits vulnerabilities, scans dependencies |
-| 🚀 **DevOps** | Manages CI/CD, infrastructure, monitoring |
+Eight stages run in dependency order. Each consumes the artifacts of the stages
+before it, and no stage starts until the artifact types it declares as inputs
+exist.
+
+| Agent | Role | Produces |
+|---|---|---|
+| 🎯 **Orchestrator** | Drives the pipeline and emits state telemetry | execution events |
+| 📋 **Product Manager** | Infers the domain model from the prompt | `PRD.md`, `Tasks.json` |
+| 🏗️ **Architect** | Entities, relationships, topology, storage | `Architecture.md` |
+| 💻 **Developer** | Generates and validates the repository | source files, `Repository.zip` |
+| 🔍 **Reviewer** | Runs checks against the emitted files | `PRReview.md` |
+| 🧪 **Tester** | Reports on the generated specs and coverage gaps | `TestReport.md` |
+| 🔒 **Security** | Capability-driven audit with severity ranking | `SecurityAudit.md` |
+| 🚀 **DevOps** | Compose topology, environment, rollout order | `DeploymentPlan.md` |
+| 📚 **Documentation** | Indexes the run and its outputs | `ProjectOverview.md`, `SummaryReport.md` |
 
 ## Tech Stack
+
+What actually executes during a run:
 
 | Layer | Technology |
 |---|---|
 | **Frontend** | TanStack Start (React 19), Vite, TypeScript, Tailwind CSS v4, shadcn/ui |
-| **API** | Fastify 5, TypeScript, Zod, Prisma |
-| **Agent Runtime** | Python 3.12+, FastAPI, LangGraph |
-| **Database** | PostgreSQL 16, Redis 7, Qdrant |
-| **Infrastructure** | Docker, Kubernetes, Terraform |
+| **API & Orchestrator** | Fastify 5, TypeScript, Zod |
+| **Agents** | TypeScript, in `apps/api/src/orchestrator` |
+| **Run state** | In-process — no external services required |
+| **LLM providers** | Anthropic / OpenAI / Gemini, with a deterministic fallback |
+
+Scaffolded but **not** wired into the execution path: `apps/agent-runtime`
+(Python/FastAPI), Prisma and PostgreSQL in `packages/database`, and the
+Redis/Qdrant services in `docker-compose.yml`. They are present for the
+roadmap below, not used by the demo — see [Limitations](#limitations).
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 22.x LTS
-- Python 3.12+
+- Node.js 22.x LTS (or newer)
 - pnpm 9.x (`corepack enable`)
-- Docker & Docker Compose
-- uv (Python package manager)
+
+That is the complete list. The demo holds run state in memory and needs no
+database, broker or container runtime to start.
 
 ### Quick Start
 
 ```bash
-git clone https://github.com/forgeone/forgeone.git
-cd forgeone
-make setup
-make infra
-make dev
+pnpm install
+pnpm turbo dev
 ```
 
 The web app runs at `http://localhost:8080` and the API at `http://localhost:4000`.
 In development the Vite dev server proxies `/api/v1` and `/health` to the API,
 so the browser stays same-origin and no CORS preflight is involved.
+
+Open the web app, type a product idea, and press **Dispatch Engineering Team**.
+
+No `.env` is required — `apps/api/src/config.ts` supplies a working default for
+every setting. Set an LLM API key (see below) to have the Developer agent call
+a real model instead of the deterministic generator.
+
+<details>
+<summary>Optional components (not needed to run the demo)</summary>
+
+`docker-compose.yml` provisions PostgreSQL, Redis and Qdrant, and
+`apps/agent-runtime` is a Python service. Neither is wired into the current
+execution pipeline — the orchestrator and its agents are TypeScript inside
+`apps/api`, and all run state is in memory. `make infra` and `make db-migrate`
+exist for that future work; running them is not a prerequisite and the
+Prisma migrations directory is still empty.
+
+</details>
+
+### Using a real model
+
+Without an API key the Developer agent renders a deterministic scaffold derived
+from the prompt, and says so in its telemetry. With one configured, it asks the
+provider for the codebase and validates the response before anything reaches
+`Repository.zip`.
+
+```bash
+export ANTHROPIC_API_KEY=...    # or OPENAI_API_KEY / GEMINI_API_KEY
+pnpm turbo dev
+```
+
+Provider output is treated as untrusted: paths are normalised, traversal and
+absolute paths are rejected, duplicates and oversized files are dropped, and if
+too little survives validation the pipeline falls back to the deterministic
+scaffold rather than emitting a partial repository.
 
 ### Live execution pacing
 
@@ -88,19 +132,48 @@ Pacing is disabled automatically under `NODE_ENV=test`.
 ```
 forgeone/
 ├── apps/
-│   ├── web/              # TanStack Start frontend (live execution console)
-│   ├── api/              # Fastify API server + agent orchestrator
-│   └── agent-runtime/    # Python agent system
+│   ├── web/              # TanStack Start frontend (live execution console)   [active]
+│   ├── api/              # Fastify server + agent orchestrator                [active]
+│   └── agent-runtime/    # Python agent system                                [not wired]
 ├── packages/
-│   ├── config/           # Shared ESLint & TypeScript configs
-│   ├── database/         # Prisma schema & client
-│   ├── types/            # Shared TypeScript types
-│   └── logger/           # Shared logging
-├── prompts/              # Agent system prompts & templates
-├── infra/                # Docker, Kubernetes, Terraform
+│   ├── config/           # Shared ESLint & TypeScript configs                 [active]
+│   ├── types/            # Shared TypeScript types                            [active]
+│   ├── logger/           # Shared logging                                     [active]
+│   └── database/         # Prisma schema & client                             [not wired]
+├── prompts/              # Agent system prompt templates                      [not wired]
+├── infra/                # Docker compose assets                              [optional]
 ├── docs/                 # Architecture & guides
 └── scripts/              # Developer tooling
 ```
+
+The orchestrator lives in `apps/api/src/orchestrator`:
+
+| File | Responsibility |
+|---|---|
+| `domain.ts` | Extracts resource nouns from the prompt; scores domain profiles |
+| `blueprint.ts` | Builds the shared project model: entities, relations, capabilities |
+| `scaffold.ts` | Renders the blueprint into a repository |
+| `repository-guard.ts` | Validates untrusted provider output before it reaches the archive |
+| `pipeline.ts` | Dependency-gated stage execution and telemetry |
+| `agents/` | The eight stage implementations |
+
+## Limitations
+
+Stated plainly, because a demo that overclaims is worse than one that doesn't.
+
+- **Run state is in memory.** Restarting the API invalidates existing run URLs;
+  the console reports this as *run not found* rather than a generic error.
+- **Without an API key the Developer is a deterministic generator**, not a
+  model. It derives a real, prompt-specific repository — but it is a template
+  engine, and the agent's telemetry says so during the run.
+- **Domain profiles are curated.** Noun extraction from the prompt is generic;
+  the canonical resources for ~19 known domains are authored knowledge. An
+  unrecognised domain falls back to whatever the prompt states outright.
+- **Generated tests are contract tests.** They never open a database, so the
+  emitted SQL and foreign keys are unexercised. The Tester reports this.
+- **Some workspace screens are illustrative** and are labelled *Sample data*
+  in the UI. The live run console, artifact explorer and repository views are
+  driven entirely by real run data.
 
 See [docs/architecture/overview.md](docs/architecture/overview.md) for full documentation.
 

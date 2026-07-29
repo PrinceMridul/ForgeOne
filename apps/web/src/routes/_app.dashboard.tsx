@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { projects, stats } from "@/lib/mock-data";
 import { useLiveEngine } from "@/lib/live-engine";
 import { MetricStrip } from "@/components/metric-charts";
+import { SampleDataNotice } from "@/components/sample-data-notice";
 import { ExecutionTimeline } from "@/components/execution-timeline";
 import { LiveLogViewer } from "@/components/live-log-viewer";
 import { AgentCommGraph } from "@/components/graphs";
@@ -47,6 +48,8 @@ function Dashboard() {
           </>
         }
       />
+
+      <SampleDataNotice detail="The workspace overview below is a static composition. Live agent execution, generated repositories and artifacts are real — dispatch a run from the landing page to see measured data." />
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

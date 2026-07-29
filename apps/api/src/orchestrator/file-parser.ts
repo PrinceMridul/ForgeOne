@@ -50,7 +50,12 @@ export function parseGeneratedFiles(rawText: string): GeneratedFile[] {
   const files: GeneratedFile[] = [];
 
   // Match BEGIN FILE ... path: <filepath> ... END FILE
-  const fileBlockRegex = /BEGIN FILE[\r\n]+path:\s*([^\r\n]+)[\r\n]+([\s\S]*?)(?:END FILE|$)/gi;
+  //
+  // `[^\r\n]*` rather than `+`: with `+` a blank value after `path:` caused the
+  // matcher to skip the newline and adopt the first line of file *content* as
+  // the filename, producing entries like `empty path`. An empty capture is now
+  // yielded and discarded below.
+  const fileBlockRegex = /BEGIN FILE[\r\n]+path:[ \t]*([^\r\n]*)[\r\n]+([\s\S]*?)(?:END FILE|$)/gi;
 
   let match: RegExpExecArray | null;
   while ((match = fileBlockRegex.exec(rawText)) !== null) {

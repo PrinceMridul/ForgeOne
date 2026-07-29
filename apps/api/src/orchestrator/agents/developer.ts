@@ -5,6 +5,7 @@ import { parseGeneratedFiles, detectLanguage, type GeneratedFile } from '../file
 import { createZipArchive } from '../../utils/zip-builder';
 import { deriveBlueprint } from '../blueprint';
 import { scaffoldRepository } from '../scaffold';
+import { guardRepositoryFiles, isViableRepository, describeRejections } from '../repository-guard';
 
 export class DeveloperAgent implements IAgent {
   public readonly agentType = 'DEVELOPER' as const;
@@ -77,12 +78,42 @@ Do not output explanations. Only output files.
       );
     }
 
-    const generatedFiles: GeneratedFile[] = parseGeneratedFiles(rawCodeText);
+    // Provider output is untrusted. Every path is normalised and every file is
+    // size- and duplicate-checked before it can reach Repository.zip, because
+    // that archive is handed to a user to extract.
+    const parsed = parseGeneratedFiles(rawCodeText);
+    const guarded = guardRepositoryFiles(parsed);
 
-    // Either no provider was configured, or it replied in a format we could
-    // not parse. Render the blueprint directly — the result is still specific
-    // to this prompt rather than a fixed sample project.
-    if (generatedFiles.length === 0) {
+    if (guarded.rejections.length > 0) {
+      emitEvent(
+        `Rejected ${guarded.rejections.length} unsafe or malformed file(s) from the provider response: ${describeRejections(guarded.rejections)}.`,
+        'LOG',
+        { rejections: guarded.rejections },
+      );
+    }
+
+    const generatedFiles: GeneratedFile[] = [];
+
+    if (isViableRepository(guarded.files)) {
+      for (const file of guarded.files) {
+        generatedFiles.push({
+          path: file.path,
+          content: file.content,
+          language: detectLanguage(file.path),
+          size: Buffer.byteLength(file.content, 'utf-8'),
+        });
+      }
+      emitEvent(`Accepted ${generatedFiles.length} provider-generated file(s) after validation.`, 'LOG');
+    } else {
+      // No provider, an unparseable reply, or too little survived validation.
+      // Render the blueprint directly rather than shipping a partial
+      // repository — the result is still specific to this prompt.
+      if (parsed.length > 0) {
+        emitEvent(
+          'Provider output did not form a viable repository after validation. Falling back to the derived blueprint.',
+          'LOG',
+        );
+      }
       for (const file of scaffoldRepository(blueprint)) {
         generatedFiles.push({
           path: file.path,

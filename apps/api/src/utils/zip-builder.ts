@@ -1,4 +1,5 @@
 import { crc32 } from 'zlib';
+import { normalizeRepositoryPath } from '../orchestrator/repository-guard';
 
 export interface ZipEntry {
   path: string;
@@ -8,16 +9,33 @@ export interface ZipEntry {
 /**
  * Creates a valid PKZip archive Buffer from an array of file entries.
  * Uses STORE (uncompressed) format for high performance and zero external dependencies.
+ *
+ * Entry paths are re-validated here even though callers are expected to have
+ * run them through the repository guard. This is the last point before bytes
+ * a user will extract, and stripping a leading slash — which is all this used
+ * to do — leaves `../` intact. Anything that cannot be normalised to a safe
+ * repository-relative path is dropped rather than written.
  */
 export function createZipArchive(entries: ZipEntry[]): Buffer {
   const localHeaders: Buffer[] = [];
   const centralHeaders: Buffer[] = [];
+  const written = new Set<string>();
 
   let offset = 0;
+  let count = 0;
 
   for (const entry of entries) {
-    // Sanitize path (strip leading slash)
-    const sanitizedPath = entry.path.replace(/^\/+/, '');
+    const normalized = normalizeRepositoryPath(entry.path);
+    if ('reason' in normalized) continue;
+
+    // A duplicate name would produce an archive whose entry count disagrees
+    // with what extraction actually yields.
+    const key = normalized.path.toLowerCase();
+    if (written.has(key)) continue;
+    written.add(key);
+    count++;
+
+    const sanitizedPath = normalized.path;
     const filenameBuf = Buffer.from(sanitizedPath, 'utf-8');
     const contentBuf = Buffer.isBuffer(entry.content)
       ? entry.content
@@ -79,8 +97,11 @@ export function createZipArchive(entries: ZipEntry[]): Buffer {
   eocd.writeUInt32LE(0x06054b50, 0); // EOCD signature
   eocd.writeUInt16LE(0, 4); // Disk number
   eocd.writeUInt16LE(0, 6); // Start disk
-  eocd.writeUInt16LE(entries.length, 8); // Entries on this disk
-  eocd.writeUInt16LE(entries.length, 10); // Total entries
+  // Must be the number of entries actually written, not the number offered.
+  // Dropped entries would otherwise leave the central directory declaring
+  // more records than it holds, which readers report as a corrupt archive.
+  eocd.writeUInt16LE(count, 8); // Entries on this disk
+  eocd.writeUInt16LE(count, 10); // Total entries
   eocd.writeUInt32LE(centralDirSize, 12); // Central dir size
   eocd.writeUInt32LE(centralDirOffset, 16); // Central dir offset
   eocd.writeUInt16LE(0, 20); // Comment length

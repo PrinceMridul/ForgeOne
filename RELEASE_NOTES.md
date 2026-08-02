@@ -188,7 +188,7 @@ node scripts/verify-deployment.mjs
 |---|---|
 | `pnpm turbo lint` | 5/5 tasks — 0 errors, 8 warnings |
 | `pnpm turbo type-check` | 8/8 tasks |
-| `pnpm turbo test` | **118 tests across 10 files** |
+| `pnpm turbo test` | **120 tests across 10 files** |
 | `pnpm turbo build` | 5/5 tasks |
 | `node scripts/verify-deployment.mjs` | 7/7 checks, run completes in 42.9s |
 
@@ -237,7 +237,7 @@ introduced by this pass; all are deliberate scope.
   `/activity`, `/settings`, `/terminal`, `/projects/:slug`. All now carry the
   *Sample data* badge. The run console, artifact explorer, repository views and
   build-verification panel are measured.
-- **The web app has no unit tests.** The 118 tests cover the API and
+- **The web app has no unit tests.** The 120 tests cover the API and
   orchestrator. UI correctness is verified end to end by
   `scripts/verify-deployment.mjs` and the cross-domain harness rather than by
   component tests.

@@ -40,6 +40,8 @@ describe('Semantic project understanding', () => {
       ['matches', 'match'],
       ['chess', 'chess'],
       ['analysis', 'analysis'],
+      // A lone `z` doubles before `-es`, so the singular is "quiz", not "quizz".
+      ['quizzes', 'quiz'],
     ])('%s -> %s', (input, expected) => {
       expect(singularize(input)).toBe(expected);
     });
@@ -215,6 +217,32 @@ describe('Semantic project understanding', () => {
       const files = scaffoldRepository(deriveBlueprint('Build a CRM', 'deals and contacts'));
       for (const file of files) {
         expect(file.content.trim().length).toBeGreaterThan(0);
+      }
+    });
+
+    it('never emits two route modules for the same resource', () => {
+      // A prompt naming "quizzes" once yielded both quizes.ts and quizzes.ts:
+      // the domain profile contributed "quiz" while the prompt singularised to
+      // "quizz", so the two never collided during de-duplication. Any pair of
+      // route modules whose names differ only by a doubled consonant is the
+      // same defect wearing a different word.
+      const prompts: Array<[string, string]> = [
+        ['Build an online learning platform', 'courses, lessons and quizzes'],
+        ['Build a Hospital Management system', 'patients, doctors and appointments'],
+        ['Build an e-commerce store', 'products, orders and customers'],
+      ];
+
+      for (const [title, description] of prompts) {
+        const routes = scaffoldRepository(deriveBlueprint(title, description))
+          .filter((f) => f.path.startsWith('src/routes/'))
+          .map((f) => f.path.replace('src/routes/', '').replace('.ts', ''));
+
+        expect(new Set(routes).size).toBe(routes.length);
+
+        // Collapse runs of repeated letters; two resources that agree once
+        // collapsed are the same noun spelled two ways.
+        const collapsed = routes.map((r) => r.replace(/(.)+/g, '$1'));
+        expect(new Set(collapsed).size).toBe(collapsed.length);
       }
     });
   });

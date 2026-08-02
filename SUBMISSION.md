@@ -151,7 +151,7 @@ Full narration in [`Demo_Script.md`](Demo_Script.md).
 |---|---|
 | `pnpm turbo lint` | 5/5 tasks — 0 errors |
 | `pnpm turbo type-check` | 8/8 tasks |
-| `pnpm turbo test` | 118 tests, 10 files |
+| `pnpm turbo test` | 120 tests, 10 files |
 | `pnpm turbo build` | 5/5 tasks |
 | `node scripts/verify-deployment.mjs` | 7/7 checks against a running instance |
 

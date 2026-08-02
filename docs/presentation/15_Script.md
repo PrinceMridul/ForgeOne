@@ -31,7 +31,7 @@
 - "We found Zip Slip in our own pipeline. Seven hostile paths in, one safe entry out."
 
 ## 11 · Verification — 20s
-- "118 tests. Zip entries always equal what the UI claims — asserted by test."
+- "120 tests. Zip entries always equal what the UI claims — asserted by test."
 
 ## 12 · Results — 20s
 - "Ten domains, ten genuinely different systems."

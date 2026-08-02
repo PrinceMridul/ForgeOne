@@ -139,7 +139,7 @@ of the same loop that built it:
   emits a known-good deterministic repository rather than a broken one.
 
 Self-review, dependency-ordered planning and multi-step execution are not
-claims about the build process here — they are executable code with 118 tests
+claims about the build process here — they are executable code with 120 tests
 around them.
 
 ---
@@ -150,7 +150,7 @@ The loop closes on measurement. Two properties are asserted end to end against
 the running server, so a regression fails a test rather than surviving to a demo:
 
 ```bash
-pnpm turbo test                     # 118 tests across 10 files
+pnpm turbo test                     # 120 tests across 10 files
 node scripts/verify-deployment.mjs  # against localhost or a deployed URL
 ```
 

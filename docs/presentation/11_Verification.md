@@ -6,7 +6,7 @@
 |---|---|
 | `pnpm turbo lint` | 5/5 tasks — **0 errors** |
 | `pnpm turbo type-check` | 8/8 tasks |
-| `pnpm turbo test` | **118 tests**, 10 files |
+| `pnpm turbo test` | **120 tests**, 10 files |
 | `pnpm turbo build` | 5/5 tasks |
 
 ## Properties asserted end-to-end, not just unit-tested

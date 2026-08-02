@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)](https://www.typescriptlang.org/)
 [![Node](https://img.shields.io/badge/Node-22%2B-brightgreen)](https://nodejs.org)
-[![Tests](https://img.shields.io/badge/tests-118%20passing-brightgreen)](#verification)
+[![Tests](https://img.shields.io/badge/tests-120%20passing-brightgreen)](#verification)
 
 *Describe a software idea. Watch eight specialist agents plan, architect, build,
 review, test, audit and document it — then download the repository they produced.*
@@ -263,7 +263,7 @@ Current state of the pipeline on `main`:
 |---|---|
 | `pnpm turbo lint` | 5/5 tasks — 0 errors |
 | `pnpm turbo type-check` | 8/8 tasks |
-| `pnpm turbo test` | 118 tests across 10 files |
+| `pnpm turbo test` | 120 tests across 10 files |
 | `pnpm turbo build` | 5/5 tasks |
 
 Beyond the unit suite, two properties are asserted end to end against the

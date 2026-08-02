@@ -77,36 +77,95 @@ export interface ProjectBlueprint {
   dependencies: Record<string, string>;
 }
 
-const CAPABILITY_RULES: Array<{ id: CapabilityId; label: string; implication: string; keywords: string[] }> = [
+const CAPABILITY_RULES: Array<{
+  id: CapabilityId;
+  label: string;
+  implication: string;
+  keywords: string[];
+}> = [
   {
     id: 'realtime',
     label: 'Realtime collaboration',
     implication: 'WebSocket gateway with per-room fan-out and presence heartbeats',
-    keywords: ['realtime', 'real-time', 'live', 'cursor', 'presence', 'collaborat', 'websocket', 'socket', 'sync', 'multiplayer'],
+    keywords: [
+      'realtime',
+      'real-time',
+      'live',
+      'cursor',
+      'presence',
+      'collaborat',
+      'websocket',
+      'socket',
+      'sync',
+      'multiplayer',
+    ],
   },
   {
     id: 'auth',
     label: 'Authentication & tenancy',
     implication: 'Session auth with per-tenant row scoping on every query',
-    keywords: ['auth', 'login', 'sign in', 'signin', 'sso', 'oauth', 'account', 'seat', 'tenant', 'permission', 'role'],
+    keywords: [
+      'auth',
+      'login',
+      'sign in',
+      'signin',
+      'sso',
+      'oauth',
+      'account',
+      'seat',
+      'tenant',
+      'permission',
+      'role',
+    ],
   },
   {
     id: 'billing',
     label: 'Billing & payments',
     implication: 'Stripe webhooks reconciled against a local subscription ledger',
-    keywords: ['billing', 'stripe', 'subscription', 'payment', 'invoice', 'metering', 'checkout', 'pricing', 'dunning'],
+    keywords: [
+      'billing',
+      'stripe',
+      'subscription',
+      'payment',
+      'invoice',
+      'metering',
+      'checkout',
+      'pricing',
+      'dunning',
+    ],
   },
   {
     id: 'search',
     label: 'Search',
     implication: 'Postgres full-text search with a GIN index and ranked results',
-    keywords: ['search', 'full-text', 'fulltext', 'query', 'filter', 'index', 'elasticsearch', 'clickhouse'],
+    keywords: [
+      'search',
+      'full-text',
+      'fulltext',
+      'query',
+      'filter',
+      'index',
+      'elasticsearch',
+      'clickhouse',
+    ],
   },
   {
     id: 'storage',
     label: 'Media & file storage',
     implication: 'S3-compatible object storage with scoped, short-lived presigned URLs',
-    keywords: ['upload', 'file', 'image', 'video', 'media', 'attachment', 'recording', 'asset', 'photo', 'pdf', 'export'],
+    keywords: [
+      'upload',
+      'file',
+      'image',
+      'video',
+      'media',
+      'attachment',
+      'recording',
+      'asset',
+      'photo',
+      'pdf',
+      'export',
+    ],
   },
   {
     id: 'notifications',
@@ -118,31 +177,96 @@ const CAPABILITY_RULES: Array<{ id: CapabilityId; label: string; implication: st
     id: 'analytics',
     label: 'Analytics & reporting',
     implication: 'Pre-aggregated rollup tables refreshed on write',
-    keywords: ['analytics', 'metric', 'dashboard', 'chart', 'report', 'insight', 'stats', 'telemetry'],
+    keywords: [
+      'analytics',
+      'metric',
+      'dashboard',
+      'chart',
+      'report',
+      'insight',
+      'stats',
+      'telemetry',
+    ],
   },
   {
     id: 'scheduling',
     label: 'Scheduling',
     implication: 'Cron-driven worker with timezone-aware recurrence rules',
-    keywords: ['calendar', 'schedule', 'booking', 'cron', 'recurring', 'appointment', 'roadmap', 'cycle'],
+    keywords: [
+      'calendar',
+      'schedule',
+      'booking',
+      'cron',
+      'recurring',
+      'appointment',
+      'roadmap',
+      'cycle',
+    ],
   },
   {
     id: 'ai',
     label: 'AI features',
     implication: 'Embedding pipeline backed by a vector index for semantic recall',
-    keywords: ['ai', 'llm', 'gpt', 'embedding', 'semantic', 'recommend', 'transcript', 'summar', 'agent'],
+    keywords: [
+      'ai',
+      'llm',
+      'gpt',
+      'embedding',
+      'semantic',
+      'recommend',
+      'transcript',
+      'summar',
+      'agent',
+    ],
   },
 ];
 
 const CAPABILITY_BY_ID = new Map(CAPABILITY_RULES.map((r) => [r.id, r]));
 
 const NAME_STOPWORDS = new Set([
-  'build', 'ship', 'create', 'design', 'prototype', 'add', 'make', 'develop', 'implement', 'a', 'an', 'the',
-  'with', 'and', 'for', 'on', 'of', 'to', 'in', 'using', 'that', 'me', 'my', 'app', 'application', 'platform',
-  'system', 'tool', 'service', 'website', 'site', 'style', 'like', 'top', 'its', 'their', 'some',
+  'build',
+  'ship',
+  'create',
+  'design',
+  'prototype',
+  'add',
+  'make',
+  'develop',
+  'implement',
+  'a',
+  'an',
+  'the',
+  'with',
+  'and',
+  'for',
+  'on',
+  'of',
+  'to',
+  'in',
+  'using',
+  'that',
+  'me',
+  'my',
+  'app',
+  'application',
+  'platform',
+  'system',
+  'tool',
+  'service',
+  'website',
+  'site',
+  'style',
+  'like',
+  'top',
+  'its',
+  'their',
+  'some',
 ]);
 
 function pluralize(word: string): string {
+  // A short word ending in a lone `z` after a vowel doubles it: quiz -> quizzes,
+  // fez -> fezzes. Words that already end in `zz` (buzz -> buzzes) do not.
+  if (/[aeiou]z$/.test(word) && word.length <= 5) return `${word}z${'es'}`;
   if (/(s|x|z|ch|sh)$/.test(word)) return `${word}es`;
   if (/[^aeiou]y$/.test(word)) return `${word.slice(0, -1)}ies`;
   return `${word}s`;
@@ -175,7 +299,24 @@ function inferFields(name: string): BlueprintField[] {
   const n = name.toLowerCase();
   const has = (...needles: string[]) => needles.some((needle) => n.includes(needle));
 
-  if (has('user', 'player', 'member', 'customer', 'patient', 'doctor', 'guest', 'agent', 'contact', 'profile', 'author', 'student', 'driver', 'participant'))
+  if (
+    has(
+      'user',
+      'player',
+      'member',
+      'customer',
+      'patient',
+      'doctor',
+      'guest',
+      'agent',
+      'contact',
+      'profile',
+      'author',
+      'student',
+      'driver',
+      'participant',
+    )
+  )
     return [f('email'), f('display_name'), f('avatar_url')];
 
   if (has('message', 'comment', 'reply', 'post', 'note'))
@@ -214,20 +355,15 @@ function inferFields(name: string): BlueprintField[] {
   if (has('product', 'listing', 'title', 'episode', 'course', 'template', 'puzzle'))
     return [f('name'), f('description'), f('published', 'boolean')];
 
-  if (has('inventory', 'stock'))
-    return [f('sku'), f('quantity', 'number'), f('warehouse')];
+  if (has('inventory', 'stock')) return [f('sku'), f('quantity', 'number'), f('warehouse')];
 
-  if (has('ticket', 'issue', 'task'))
-    return [f('title'), f('status'), f('priority')];
+  if (has('ticket', 'issue', 'task')) return [f('title'), f('status'), f('priority')];
 
-  if (has('dashboard', 'widget', 'query', 'view'))
-    return [f('name'), f('config', 'json')];
+  if (has('dashboard', 'widget', 'query', 'view')) return [f('name'), f('config', 'json')];
 
-  if (has('skill', 'label', 'tag', 'category'))
-    return [f('name'), f('weight', 'number')];
+  if (has('skill', 'label', 'tag', 'category')) return [f('name'), f('weight', 'number')];
 
-  if (has('follow', 'like', 'reaction'))
-    return [f('actor_id', 'uuid'), f('kind')];
+  if (has('follow', 'like', 'reaction')) return [f('actor_id', 'uuid'), f('kind')];
 
   if (has('organization', 'company', 'workspace', 'club', 'team', 'channel', 'project', 'account'))
     return [f('name'), f('slug')];

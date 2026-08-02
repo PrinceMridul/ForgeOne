@@ -48,4 +48,4 @@ ForgeOne's own eight agents are this same loop, dependency-gated and productised
 ---
 
 **Self-review and dependency-ordered planning are not claims about how this was
-built — they are executable code with 118 tests around them.**
+built — they are executable code with 120 tests around them.**

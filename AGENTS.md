@@ -44,7 +44,7 @@ pnpm install
 pnpm turbo dev          # web :8080 · api :4000
 pnpm turbo lint         # must be 0 errors
 pnpm turbo type-check
-pnpm turbo test         # 118 tests across 10 files
+pnpm turbo test         # 120 tests across 10 files
 pnpm turbo build
 
 pnpm start                             # production supervisor on :8080

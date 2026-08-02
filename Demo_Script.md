@@ -111,7 +111,7 @@ There's now one choke point that normalises paths, rejects traversal and absolut
 
 ### 2:40–3:00 · Verification & close
 Click **Download**.
-> "118 tests. Zip entries always equal the count on screen — asserted by test, verified across six prompts. Ten domains produce ten genuinely different systems.
+> "120 tests. Zip entries always equal the count on screen — asserted by test, verified across six prompts. Ten domains produce ten genuinely different systems.
 
 Persistence is the next day of work. Everything else you see is measured."
 

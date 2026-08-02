@@ -39,7 +39,7 @@ complete; a submission with no live link is not scored at all.
   module per resource, real foreign keys, cascading deletes, an index on every
   key because the list endpoints filter on exactly those columns, tables emitted
   parent-first so references resolve.
-- 118 tests, 10 files, all passing. 37 assertions on the provider guard alone.
+- 120 tests, 10 files, all passing. 37 assertions on the provider guard alone.
 - Two properties asserted end to end rather than unit-tested: archive integrity
   and provider safety.
 - Clean gates: lint 0 errors, type-check 8/8, build 5/5. CI covers all four plus
@@ -47,7 +47,7 @@ complete; a submission with no live link is not scored at all.
 
 **Weaknesses**
 
-- **No web tests.** All 118 are API/orchestrator. Every UI defect fixed in this
+- **No web tests.** All 120 are API/orchestrator. Every UI defect fixed in this
   pass — fabricated token pills, a missing eighth agent, a pipeline diagram
   naming artifacts that are never produced — was invisible to the suite, and was
   found by opening the app. A judge who notices the coverage split will read
@@ -199,7 +199,7 @@ nothing in the pipeline meters tokens.
 The frontend route skeleton and the shadcn/ui primitives were scaffolded with
 Lovable — that is in the README and the credits. The orchestrator, all eight
 agents, the domain model, the blueprint, the repository generator, the provider
-safety layer, the deployment topology and all 118 tests were written for this
+safety layer, the deployment topology and all 120 tests were written for this
 project through Codex, in a loop of plan → implement → review against the
 running product → fix. `docs/CODEX_USAGE.md` cites the commits. What I cannot
 hand you is a session transcript, so judge it on the shape of the history: eight
@@ -234,7 +234,7 @@ explorer, repository views and build-verification panel are entirely measured.
 If I had more time I would delete the illustrative screens rather than badge
 them — badging is the honest interim, not the ideal.
 
-**7. "You have 118 tests and none of them cover the frontend."**
+**7. "You have 120 tests and none of them cover the frontend."**
 
 Correct, and it cost me. Every UI defect I fixed in the final pass — a fabricated
 token pill, a missing eighth agent in the pipeline diagram, a graph naming

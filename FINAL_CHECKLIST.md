@@ -47,7 +47,7 @@ Reproduce: `pnpm install && pnpm turbo run lint type-check test:ci build`
 |---|---|---|
 | `pnpm turbo lint` | 5/5 tasks · 0 errors · 8 warnings | **PASS** |
 | `pnpm turbo type-check` | 8/8 tasks | **PASS** |
-| `pnpm turbo test` | 118 tests · 10 files · all passing | **PASS** |
+| `pnpm turbo test` | 120 tests · 10 files · all passing | **PASS** |
 | `pnpm turbo build` | 5/5 tasks | **PASS** |
 | Pre-commit hook agrees with CI | routed per workspace in `lint-staged.config.js` | **PASS** |
 | Clean-clone install | `pnpm install --frozen-lockfile` | **PASS** |

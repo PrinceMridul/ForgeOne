@@ -266,7 +266,7 @@ const NAME_STOPWORDS = new Set([
 function pluralize(word: string): string {
   // A short word ending in a lone `z` after a vowel doubles it: quiz -> quizzes,
   // fez -> fezzes. Words that already end in `zz` (buzz -> buzzes) do not.
-  if (/[aeiou]z$/.test(word) && word.length <= 5) return `${word}z${'es'}`;
+  if (/[aeiou]z$/.test(word) && word.length <= 5) return `${word}zes`;
   if (/(s|x|z|ch|sh)$/.test(word)) return `${word}es`;
   if (/[^aeiou]y$/.test(word)) return `${word.slice(0, -1)}ies`;
   return `${word}s`;

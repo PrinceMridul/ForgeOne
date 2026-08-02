@@ -4,22 +4,61 @@
 
 **Your Autonomous Software Engineering Team**
 
-[![CI](https://github.com/forgeone/forgeone/actions/workflows/ci.yml/badge.svg)](https://github.com/forgeone/forgeone/actions/workflows/ci.yml)
+[![CI](https://github.com/PrinceMridul/ForgeOne/actions/workflows/ci.yml/badge.svg)](https://github.com/PrinceMridul/ForgeOne/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)
-[![Python](https://img.shields.io/badge/Python-3.12+-yellow)](https://python.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)](https://www.typescriptlang.org/)
+[![Node](https://img.shields.io/badge/Node-22%2B-brightgreen)](https://nodejs.org)
+[![Tests](https://img.shields.io/badge/tests-118%20passing-brightgreen)](#verification)
 
-*An AI-native engineering workspace where autonomous software engineering agents collaborate to transform ideas and repositories into production-ready software.*
+*Describe a software idea. Watch eight specialist agents plan, architect, build,
+review, test, audit and document it — then download the repository they produced.*
 
-[Getting Started](#getting-started) · [Architecture](#architecture) · [Documentation](docs/) · [Contributing](CONTRIBUTING.md)
+[Demo](#demo) · [Quick Start](#quick-start) · [Agent Team](#agent-team) · [Architecture](#architecture) · [Verification](#verification) · [Limitations](#limitations)
 
 </div>
 
 ---
 
+## Demo
+
+Type an idea and press **Dispatch Engineering Team**. Over roughly forty
+seconds you watch a dependency-gated pipeline run:
+
+```
+"Build a Hospital Management system"
+        ↓
+Product Manager   recognised the brief as a healthcare product
+                  identified 6 core resources
+                  (patients, doctors, appointments, medical_records,
+                   prescriptions, lab_results)
+                  mapped 4 relationships: appointment → patient, …
+        ↓
+Architect         entities, ER sketch, data flow, storage, deployment topology
+        ↓
+Developer         19 files — routes, Zod schemas, SQL with foreign keys,
+                  config, Dockerfile, tests → Repository.zip
+        ↓
+Reviewer          5/5 checks against the files that were actually emitted
+Tester            9 tests across 3 specs, names the resources still uncovered
+Security          1 high, 2 medium, 2 low — findings driven by real capabilities
+DevOps            compose topology, environment, rollout order
+Documentation     project overview + execution summary
+```
+
+Different prompts produce genuinely different systems. Validated across ten
+domains — chess yields `players / games / moves / ratings / tournaments`,
+commerce yields `products / orders / customers / payments`, research yields
+`papers / datasets / experiments / benchmarks`.
+
+Everything on screen is measured. The repository file count equals the number
+of entries in the downloaded archive; the test count is parsed from the specs
+that were generated; the digest is derived from the content.
+
 ## Overview
 
-ForgeOne is a multi-agent AI platform that orchestrates specialized software engineering agents to handle the complete software development lifecycle — from product specification to deployment.
+ForgeOne is a multi-agent platform that turns a one-line product idea into a
+working repository, streaming the whole process so you can see how the decision
+was reached rather than only the result.
 
 ### Agent Team
 
@@ -180,13 +219,47 @@ See [docs/architecture/overview.md](docs/architecture/overview.md) for full docu
 ## Development
 
 ```bash
-make dev          # Start all dev servers
-make test         # Run all tests
-make lint         # Lint all packages
-make type-check   # Type-check all packages
-make build        # Build all packages
-make clean        # Clean all build artifacts
+pnpm turbo dev          # Start web (:8080) and API (:4000)
+pnpm turbo test         # Run all tests
+pnpm turbo lint         # Lint all packages
+pnpm turbo type-check   # Type-check all packages
+pnpm turbo build        # Build all packages
 ```
+
+Equivalent `make` targets exist in the [Makefile](Makefile) for Unix shells.
+
+## Verification
+
+Current state of the pipeline on `main`:
+
+| Gate | Result |
+|---|---|
+| `pnpm turbo lint` | 5/5 tasks — 0 errors |
+| `pnpm turbo type-check` | 8/8 tasks |
+| `pnpm turbo test` | 118 tests across 10 files |
+| `pnpm turbo build` | 5/5 tasks |
+
+Beyond the unit suite, two properties are asserted end to end against the
+running server:
+
+- **Archive integrity** — the entries inside `Repository.zip` are exactly the
+  artifacts flagged `inRepository`, so the number shown in the console always
+  equals what you download.
+- **Provider safety** — model output is untrusted. Feeding a hostile response
+  through the pipeline (`../../../../etc/cron.d/backdoor`, absolute Windows
+  paths, duplicate entries) yields an archive containing only the safe entry.
+  Traversal, absolute paths, reserved device names, duplicates and oversized
+  files are rejected, and the run falls back to the deterministic generator if
+  too little survives validation.
+
+## Credits
+
+Built for the **ChatGPT Codex Hackathon 2026**.
+
+Frontend scaffolded with [Lovable](https://lovable.dev) on TanStack Start;
+orchestrator, agents and repository generator written for this project.
+UI primitives from [shadcn/ui](https://ui.shadcn.com), icons by
+[Lucide](https://lucide.dev).
 
 ## License
 

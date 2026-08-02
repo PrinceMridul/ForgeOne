@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { AgentCard } from "@/components/agent-card";
 import { LiveLogViewer } from "@/components/live-log-viewer";
 import { ArtifactExplorer } from "@/components/artifact-explorer";
-import { ArchitectureGraph, DependencyGraph, AgentCommGraph } from "@/components/graphs";
+import { AgentCommGraph } from "@/components/graphs";
 import { GeneratedFiles } from "@/components/generated-files";
 import { ThinkingTimeline } from "@/components/thinking-timeline";
 import { PipelineFlow } from "@/components/pipeline-flow";
@@ -20,8 +20,8 @@ import {
   Rewind,
   FastForward,
   RotateCcw,
-  Coins,
-  DollarSign,
+  FileCode,
+  Layers,
   Timer,
   Cpu,
   Rocket,
@@ -73,9 +73,15 @@ function LiveRun() {
   const overall = Math.round(
     agents.reduce((n, a) => n + a.progress, 0) / Math.max(1, agents.length),
   );
-  const totalTokens = agents.reduce((n, a) => n + a.tokensUsed, 0);
-  const cost = (totalTokens / 1000) * 0.008; // mock rate
-  const latest = metrics[metrics.length - 1];
+  // Header metrics are measured off the run, never estimated. Token counts and
+  // an inferred dollar cost used to sit here; both were derived from a static
+  // per-agent budget rather than from anything the pipeline meters, and the
+  // deterministic generator spends no tokens at all. Agents, repository files
+  // and artifact totals are all real, and the first two are exactly the numbers
+  // repository-integrity.test.ts asserts against the download.
+  const agentsDone = backendRun?.completedSteps ?? 0;
+  const agentsTotal = backendRun?.totalSteps ?? agents.length;
+  const repositoryFiles = engine.artifacts.filter((a) => a.inRepository).length;
 
   // Real elapsed time from the backend run, not the chart's frame count —
   // the metrics buffer is pre-seeded with 40 points, which made a
@@ -151,13 +157,9 @@ function LiveRun() {
 
           <div className="ml-auto flex items-center gap-2">
             <MetricPill icon={Timer} label="Runtime" value={runtime} />
-            <MetricPill icon={Coins} label="Tokens" value={`${(totalTokens / 1000).toFixed(1)}k`} />
-            <MetricPill icon={DollarSign} label="Cost" value={`$${cost.toFixed(2)}`} />
-            <MetricPill
-              icon={Cpu}
-              label="Memory"
-              value={`${(latest.memoryMb / 1024).toFixed(2)} GB`}
-            />
+            <MetricPill icon={Cpu} label="Agents" value={`${agentsDone}/${agentsTotal}`} />
+            <MetricPill icon={FileCode} label="Repo files" value={`${repositoryFiles}`} />
+            <MetricPill icon={Layers} label="Artifacts" value={`${engine.artifacts.length}`} />
           </div>
         </div>
 
@@ -297,8 +299,6 @@ function LiveRun() {
         <aside className="col-span-12 lg:col-span-3 space-y-4">
           <ArtifactExplorer maxHeight={360} />
           <AgentCommGraph height={280} />
-          <ArchitectureGraph height={220} />
-          <DependencyGraph height={280} />
 
           <div className="surface p-4">
             <div className="flex items-center gap-2 mb-2">

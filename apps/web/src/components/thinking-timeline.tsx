@@ -1,105 +1,52 @@
-import { useEffect, useRef, useState } from "react";
+import { useMemo } from "react";
 import { useLiveEngine } from "@/lib/live-engine";
 import { Brain } from "lucide-react";
+import type { LogLine } from "@/lib/live-engine";
 import { cn } from "@/lib/utils";
 
 /**
- * ThinkingTimeline — a vertical stream of "chain of thought" beats.
- * Emits a new beat every couple of ticks, agent-attributed, with a soft
- * left-rail pulse that draws the eye to the newest thought.
+ * ThinkingTimeline — the reasoning stream for the current run.
+ *
+ * This panel used to emit beats from a hardcoded pool of plausible-sounding
+ * thoughts ("Choosing Redpanda over Kafka", "Terraform plan: 6 to add"). They
+ * were unrelated to the prompt, which meant the most prominent panel on the
+ * live console was the least truthful thing on screen.
+ *
+ * It now renders the run's own telemetry. The agents already narrate their
+ * reasoning as they work — "Recognised the brief as a healthcare management
+ * product", "Mapped 4 relationship(s): appointment → patient, …" — so there was
+ * never a need to invent any of it. Newest first, matching the previous
+ * behaviour.
  */
 
-const THOUGHTS: Record<string, string[]> = {
-  Athena: [
-    "Considering hexagonal boundaries for the billing domain.",
-    "Choosing Redpanda over Kafka for lower ops load.",
-    "Drafting ADR-021 for cache invalidation strategy.",
-  ],
-  Kai: [
-    "Sketching the cursor pagination signature.",
-    "Extracting retryPolicy() into a shared util.",
-    "Wiring zod validation for POST /projects.",
-  ],
-  Isla: [
-    "Reviewing diff — noting an unbounded map on line 42.",
-    "Approving with two nits addressed.",
-    "Suggesting explicit return on retryPolicy.",
-  ],
-  Rin: [
-    "Property test surfaced a flake in retry.spec.ts.",
-    "Adding fixture for the empty cursor case.",
-    "Coverage climbed to 82.4% (+1.2%).",
-  ],
-  Nyx: [
-    "SAST scan clean — 0 critical, 2 low accepted.",
-    "Rotating staging service token.",
-    "Dependency audit surfaced nothing exploitable.",
-  ],
-  Orion: [
-    "Terraform plan: 6 to add, 0 to destroy.",
-    "Blue/green cutover to v482 healthy.",
-    "Watching p99 for regressions.",
-  ],
-  Vera: [
-    "Split epic AUTH-12 into 4 sub-tasks.",
-    "Notifying stakeholders on #eng-updates.",
-    "Reprioritizing backlog by impact/effort.",
-  ],
+/**
+ * Tinted by what the backend actually emitted: a LOG event is an agent
+ * narrating a decision, a STEP event is a discrete action it took. Labelling a
+ * "FILE_CREATED: schema.sql" line as reasoning would be the same category of
+ * overstatement this panel was rewritten to remove.
+ */
+const KIND_TINT: Record<LogLine["kind"], string> = {
+  reasoning: "border-primary/40 text-primary",
+  step: "border-chart-2/40 text-chart-2",
+  error: "border-destructive/40 text-destructive",
 };
 
-interface Beat {
-  id: string;
-  agent: string;
-  role: string;
-  text: string;
-  ts: string;
-  kind: "thought" | "action" | "decision";
-}
-
-const KIND_TINT: Record<Beat["kind"], string> = {
-  thought: "border-primary/40 text-primary",
-  action: "border-chart-2/40 text-chart-2",
-  decision: "border-success/40 text-success",
+const KIND_LABEL: Record<LogLine["kind"], string> = {
+  reasoning: "reasoning",
+  step: "step",
+  error: "error",
 };
 
 export function ThinkingTimeline({ height = 480 }: { height?: number }) {
-  const { tick, agents } = useLiveEngine();
-  const [beats, setBeats] = useState<Beat[]>([]);
-  // `agents` is a fresh array on every poll, so this effect can fire more than
-  // once for the same tick. Without this guard it emitted two beats sharing
-  // the id `b-<tick>`, which React rejects as a duplicate key and renders as
-  // duplicated/omitted rows.
-  const lastBeatTick = useRef<number | null>(null);
+  const { logs, agents } = useLiveEngine();
 
-  useEffect(() => {
-    if (tick % 2 !== 1) return;
-    if (lastBeatTick.current === tick) return;
-    lastBeatTick.current = tick;
+  const roleFor = useMemo(() => {
+    const byId = new Map(agents.map((a) => [a.id, a.role]));
+    return (agentId: string) => byId.get(agentId) ?? "Orchestrator";
+  }, [agents]);
 
-    // Attribute the thought to whoever actually holds the pipeline. Picking a
-    // rotating agent made this panel contradict the pipeline flow — showing
-    // Security "thinking" while it was still marked Waiting for inputs.
-    const active =
-      agents.find((x) => x.status === "working" || x.status === "thinking") ??
-      [...agents].reverse().find((x) => x.status === "done");
-
-    const pool = THOUGHTS[active?.name ?? "Kai"] ?? THOUGHTS.Kai;
-    const text = pool[Math.floor(tick / 2) % pool.length];
-    const kind: Beat["kind"] = tick % 6 === 1 ? "decision" : tick % 3 === 0 ? "action" : "thought";
-    setBeats((prev) =>
-      [
-        {
-          id: `b-${tick}`,
-          agent: active?.name ?? "Kai",
-          role: active?.role ?? "Developer",
-          text,
-          ts: new Date().toTimeString().slice(0, 8),
-          kind,
-        },
-        ...prev,
-      ].slice(0, 40),
-    );
-  }, [tick, agents]);
+  // The log buffer is oldest-first; this panel reads newest-first.
+  const beats = useMemo(() => [...logs].reverse().slice(0, 60), [logs]);
 
   return (
     <div className="surface flex flex-col overflow-hidden" style={{ height }}>
@@ -108,17 +55,19 @@ export function ThinkingTimeline({ height = 480 }: { height?: number }) {
         <div className="flex-1">
           <p className="text-sm font-medium">Live thinking</p>
           <p className="text-[11px] text-muted-foreground">
-            Chain of thought across the engineering team
+            Reasoning streamed from the run, agent by agent
           </p>
         </div>
-        <span className="text-[10px] text-muted-foreground tabular-nums">{beats.length} beats</span>
+        <span className="text-[10px] text-muted-foreground tabular-nums">
+          {logs.length} {logs.length === 1 ? "beat" : "beats"}
+        </span>
       </div>
       <div className="flex-1 overflow-y-auto px-4 py-3">
-        <ol className="relative border-l border-border/60 pl-5 space-y-3">
+        <ol className="relative space-y-3 border-l border-border/60 pl-5">
           {beats.map((b, i) => (
             <li
               key={b.id}
-              className="relative animate-fade-up"
+              className="animate-fade-up relative"
               style={{ animationDuration: "420ms" }}
             >
               <span
@@ -129,19 +78,21 @@ export function ThinkingTimeline({ height = 480 }: { height?: number }) {
                 )}
               />
               <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                <span className="text-foreground font-medium">{b.agent}</span>
+                <span className="font-medium text-foreground">{b.agentName}</span>
                 <span>·</span>
-                <span>{b.role}</span>
+                <span>{roleFor(b.agentId)}</span>
                 <span className="ml-auto tabular-nums">{b.ts}</span>
               </div>
-              <p className="mt-0.5 text-sm leading-snug">{b.text}</p>
+              <p className="mt-0.5 text-sm leading-snug">{b.msg}</p>
               <p className={cn("mt-0.5 text-[10px] uppercase tracking-widest", KIND_TINT[b.kind])}>
-                {b.kind}
+                {KIND_LABEL[b.kind]}
               </p>
             </li>
           ))}
           {beats.length === 0 && (
-            <li className="text-xs text-muted-foreground">Warming up the orchestrator…</li>
+            <li className="text-xs text-muted-foreground">
+              Waiting for the first agent to report…
+            </li>
           )}
         </ol>
       </div>

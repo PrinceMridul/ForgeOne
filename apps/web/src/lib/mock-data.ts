@@ -15,7 +15,14 @@ import {
 } from "lucide-react";
 
 export type AgentRole =
-  "Architect" | "Developer" | "Reviewer" | "Tester" | "Security" | "DevOps" | "Project Manager";
+  | "Architect"
+  | "Developer"
+  | "Reviewer"
+  | "Tester"
+  | "Security"
+  | "DevOps"
+  | "Documentation"
+  | "Project Manager";
 
 export type AgentStatus = "thinking" | "working" | "idle" | "blocked" | "done";
 

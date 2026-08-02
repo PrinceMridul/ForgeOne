@@ -105,7 +105,10 @@ function StepRow({ step, index, total }: { step: BuildStep; index: number; total
       const t = setTimeout(() => setOpen(false), 900);
       return () => clearTimeout(t);
     }
-  }, [step.status]); // eslint-disable-line
+    // Intentionally keyed on status alone: including `open` would re-arm the
+    // collapse timer every time the user expands the step by hand.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step.status]);
 
   useEffect(() => {
     const el = outRef.current;

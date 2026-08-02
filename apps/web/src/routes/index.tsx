@@ -13,7 +13,6 @@ import {
   Kanban,
   Video,
   Wallet,
-  GitBranch,
   Clock,
   CheckCircle2,
   AlertTriangle,
@@ -33,7 +32,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Type an idea. Dispatch a team of seven AI engineers. Watch them design, build, review, test, secure, and ship — live.",
+          "Type an idea. Dispatch eight specialist agents. Watch them plan, architect, build, review, test, audit and document it — live.",
       },
       { property: "og:title", content: "ForgeOne — Describe your software idea" },
       {
@@ -95,30 +94,32 @@ const TEMPLATES = [
   },
 ];
 
-// Fallback shown before the API responds
+// Fallback shown before the API responds.
+//
+// Every field here is read straight off the run the API returned. There is
+// deliberately no token count: the deterministic generator spends no tokens at
+// all, and nothing in the pipeline meters them, so any number shown would be
+// invented. Same reason there is no branch — ForgeOne does not create one.
 type RunEntry = {
   id: string;
   title: string;
-  branch: string;
   status: "running" | "success" | "failed" | "warning";
   agents: number;
-  duration: string;
-  tokens: string;
+  /** Wall-clock elapsed, or null while a run is still going. */
+  duration: string | null;
 };
 
 const FALLBACK_RUNS: RunEntry[] = [
   {
     id: "—",
     title: "No runs yet",
-    branch: "—",
     status: "warning",
     agents: 0,
-    duration: "—",
-    tokens: "—",
+    duration: null,
   },
 ];
 
-function mapBackendRun(r: WorkflowRun) {
+function mapBackendRun(r: WorkflowRun): RunEntry {
   const statusMap: Record<string, "running" | "success" | "failed" | "warning"> = {
     PENDING: "running",
     RUNNING: "running",
@@ -126,20 +127,29 @@ function mapBackendRun(r: WorkflowRun) {
     FAILED: "failed",
     CANCELLED: "warning",
   };
-  const elapsed = r.completedAt
-    ? new Date(r.completedAt).getTime() - new Date(r.startedAt).getTime()
-    : Date.now() - new Date(r.startedAt).getTime();
-  const s = Math.floor(elapsed / 1000);
-  const duration = `${String(Math.floor(s / 60)).padStart(2, "0")}m ${String(s % 60).padStart(2, "0")}s`;
   return {
     id: r.id,
     title: r.title,
-    branch: "main",
     status: statusMap[r.status] ?? "running",
     agents: r.totalSteps,
-    duration,
-    tokens: `${(r.completedSteps * 50).toFixed(0)}k`,
+    duration: formatElapsed(r),
   };
+}
+
+/**
+ * Wall-clock length of a run, or null when there is nothing real to show.
+ *
+ * The seeded showcase run is written with `startedAt === completedAt`, so it
+ * has no duration. Rendering that as "00m 00s" reads as a broken timer; a dash
+ * reads as what it is.
+ */
+function formatElapsed(r: WorkflowRun): string | null {
+  if (!r.completedAt) return null;
+  const ms = new Date(r.completedAt).getTime() - new Date(r.startedAt).getTime();
+  if (!Number.isFinite(ms) || ms <= 0) return null;
+  const seconds = Math.round(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  return `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, "0")}s`;
 }
 
 const STATUS_TINT: Record<string, string> = {
@@ -215,10 +225,20 @@ function Landing() {
           <a href="#recent" className="hover:text-foreground transition-colors">
             Recent runs
           </a>
-          <a href="#" className="hover:text-foreground transition-colors">
+          <a
+            href="https://github.com/PrinceMridul/ForgeOne/commits/main"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-foreground transition-colors"
+          >
             Changelog
           </a>
-          <a href="#" className="hover:text-foreground transition-colors">
+          <a
+            href="https://github.com/PrinceMridul/ForgeOne#readme"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-foreground transition-colors"
+          >
             Docs
           </a>
         </nav>
@@ -240,7 +260,7 @@ function Landing() {
       <section className="relative z-10 mx-auto max-w-4xl px-6 pt-10 md:pt-16 pb-6 text-center">
         <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-xs text-muted-foreground animate-fade-up">
           <Sparkles className="h-3 w-3 text-primary" />
-          Seven AI engineers, one prompt away
+          Eight specialist agents, one prompt away
         </div>
         <h1 className="mt-5 text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05] animate-fade-up">
           Describe your <span className="gradient-text">software idea.</span>
@@ -308,7 +328,7 @@ function Landing() {
                   </span>
                   <span>to dispatch</span>
                   <span className="mx-1">·</span>
-                  <span>7 agents · avg 4–12 min</span>
+                  <span>8 agents · ~40s per run</span>
                 </div>
                 {dispatchError && (
                   <p className="text-[11px] text-destructive mr-2 max-w-xs truncate">
@@ -362,12 +382,7 @@ function Landing() {
               Start from a proven brief.
             </h2>
           </div>
-          <a
-            href="#"
-            className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-          >
-            Browse all <ArrowUpRight className="h-3 w-3" />
-          </a>
+          {/* No "browse all" link: these six are every template that exists. */}
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {TEMPLATES.map((t) => {
@@ -446,18 +461,15 @@ function Landing() {
                   <p className="text-[11px] text-muted-foreground flex items-center gap-2 mt-0.5">
                     <span className="font-mono">{r.id.slice(0, 12)}…</span>
                     <span>·</span>
-                    <span className="inline-flex items-center gap-1">
-                      <GitBranch className="h-2.5 w-2.5" /> {r.branch}
-                    </span>
-                    <span>·</span>
                     <span>{r.agents} agents</span>
                   </p>
                 </div>
                 <div className="hidden sm:flex items-center gap-4 text-[11px] text-muted-foreground tabular-nums">
-                  <span className="inline-flex items-center gap-1">
-                    <Clock className="h-3 w-3" /> {r.duration}
-                  </span>
-                  <span>{r.tokens} tokens</span>
+                  {r.duration && (
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> {r.duration}
+                    </span>
+                  )}
                 </div>
                 <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
               </Link>
@@ -470,20 +482,32 @@ function Landing() {
         <div className="mx-auto max-w-6xl px-6 py-6 flex flex-wrap items-center justify-between gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-3">
             <Logo />
-            <span>© 2026 ForgeOne, Inc.</span>
+            <span>ForgeOne · MIT licensed · built for the ChatGPT Codex Hackathon 2026</span>
           </div>
           <div className="flex items-center gap-5">
-            <a href="#" className="hover:text-foreground">
-              Twitter
-            </a>
-            <a href="#" className="hover:text-foreground">
+            <a
+              href="https://github.com/PrinceMridul/ForgeOne"
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-foreground"
+            >
               GitHub
             </a>
-            <a href="#" className="hover:text-foreground">
-              Discord
+            <a
+              href="https://github.com/PrinceMridul/ForgeOne/blob/main/docs/CODEX_USAGE.md"
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-foreground"
+            >
+              How it was built
             </a>
-            <a href="#" className="hover:text-foreground">
-              Status
+            <a
+              href="https://github.com/PrinceMridul/ForgeOne/blob/main/README.md#limitations"
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-foreground"
+            >
+              Limitations
             </a>
           </div>
         </div>

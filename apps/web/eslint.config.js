@@ -33,7 +33,13 @@ export default tseslint.config(
         },
       ],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
-      "@typescript-eslint/no-unused-vars": "off",
+      // Was "off", which meant `pnpm turbo lint` — the gate CI runs — could not
+      // see dead imports, while the pre-commit hook (root config) could. The
+      // two disagreeing is worse than either setting; this matches the root.
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrors: "none" },
+      ],
     },
   },
   eslintPluginPrettier,

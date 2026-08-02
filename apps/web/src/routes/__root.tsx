@@ -91,7 +91,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         property: "og:description",
         content:
-          "Seven specialized AI engineers, one workspace. Ship production software autonomously.",
+          "Eight specialist agents, one workspace. Describe a software idea and download the repository they produce.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

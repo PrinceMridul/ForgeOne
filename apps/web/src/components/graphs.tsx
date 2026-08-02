@@ -6,7 +6,6 @@ import {
   dependencyNodes,
   dependencyEdges,
 } from "@/lib/live-engine";
-import { agents as seedAgents } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 /**
@@ -79,7 +78,7 @@ export function ArchitectureGraph({ height = 260 }: { height?: number }) {
         <div>
           <p className="text-sm font-medium">Architecture graph</p>
           <p className="text-[11px] text-muted-foreground">
-            C4 container view · derived from repository
+            Reference container view · illustrative, not derived from the run
           </p>
         </div>
         <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
@@ -158,7 +157,7 @@ export function DependencyGraph({ height = 360 }: { height?: number }) {
         <div>
           <p className="text-sm font-medium">Dependency graph</p>
           <p className="text-[11px] text-muted-foreground">
-            Direct imports across {dependencyNodes.length} packages
+            Reference package graph · illustrative, not derived from the run
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
@@ -221,13 +220,16 @@ export function DependencyGraph({ height = 360 }: { height?: number }) {
 
 // ---------- Agent communication ----------
 export function AgentCommGraph({ height = 340 }: { height?: number }) {
-  const { comm } = useLiveEngine();
+  const { comm, agents } = useLiveEngine();
+  // Positioned from the live roster so the ring matches the pipeline. Laying it
+  // out from the static seed list left the Documentation agent off the graph
+  // while its edges still pointed at it.
   const positions = useMemo(() => {
     const cx = 200,
       cy = 170,
       r = 130;
-    return seedAgents.map((a, i) => {
-      const angle = (i / seedAgents.length) * Math.PI * 2 - Math.PI / 2;
+    return agents.map((a, i) => {
+      const angle = (i / agents.length) * Math.PI * 2 - Math.PI / 2;
       return {
         id: a.id,
         name: a.name,
@@ -236,16 +238,14 @@ export function AgentCommGraph({ height = 340 }: { height?: number }) {
         y: cy + Math.sin(angle) * r,
       };
     });
-  }, []);
+  }, [agents]);
   const nodeById = Object.fromEntries(positions.map((p) => [p.id, p]));
   return (
     <div className="surface p-4">
       <div className="flex items-center justify-between mb-3">
         <div>
           <p className="text-sm font-medium">Agent communication</p>
-          <p className="text-[11px] text-muted-foreground">
-            Message intensity between the seven engineers
-          </p>
+          <p className="text-[11px] text-muted-foreground">Message intensity between the agents</p>
         </div>
       </div>
       <div className="overflow-hidden">

@@ -8,6 +8,7 @@ import { useLiveEngine } from "@/lib/live-engine";
 import { LiveLogViewer } from "@/components/live-log-viewer";
 import { AgentCommGraph } from "@/components/graphs";
 import { MetricStrip } from "@/components/metric-charts";
+import { SampleDataNotice } from "@/components/sample-data-notice";
 
 export const Route = createFileRoute("/_app/agents")({
   head: () => ({
@@ -15,7 +16,7 @@ export const Route = createFileRoute("/_app/agents")({
       { title: "Multi-Agent Console · ForgeOne" },
       {
         name: "description",
-        content: "Live status, logs, and telemetry for all seven ForgeOne AI engineers.",
+        content: "Live status, logs, and telemetry for the eight ForgeOne agents.",
       },
       { property: "og:title", content: "Multi-Agent Console · ForgeOne" },
       {
@@ -35,7 +36,7 @@ function AgentsConsole() {
       <Breadcrumb items={[{ label: "Agents" }]} />
       <PageHeader
         title="Multi-Agent Console"
-        description="Seven specialized engineers collaborating in real time on the current sprint."
+        description="Per-agent status for the current run. Dispatch from the landing page to drive it with real data."
         actions={
           <>
             <Button variant="outline" size="sm" className="gap-1.5">
@@ -48,9 +49,14 @@ function AgentsConsole() {
         }
       />
 
+      <SampleDataNotice detail="Token and memory figures on this console are illustrative — nothing in the pipeline meters them, and the deterministic generator spends no tokens at all. The live run console, artifact explorer and repository views are driven entirely by measured run data." />
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { l: "Active agents", v: agents.filter((a) => a.status !== "idle").length + "/7" },
+          {
+            l: "Active agents",
+            v: `${agents.filter((a) => a.status !== "idle").length}/${agents.length}`,
+          },
           { l: "Total tokens", v: (totalTokens / 1000).toFixed(1) + "k" },
           {
             l: "Avg. progress",

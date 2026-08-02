@@ -1,5 +1,4 @@
 import { useLiveEngine, stageLabelFor, type PipelineStage } from "@/lib/live-engine";
-import { agents as seedAgents } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import {
   ChevronRight,
@@ -18,9 +17,13 @@ import {
  * artifact tokens that fly from producer to consumer as outputs complete.
  */
 export function PipelineFlow() {
-  const { pipeline, flying, tick } = useLiveEngine();
-  const nameById = Object.fromEntries(seedAgents.map((a) => [a.id, a.name]));
-  const iconById = Object.fromEntries(seedAgents.map((a) => [a.id, a.icon]));
+  const { pipeline, flying, tick, agents } = useLiveEngine();
+  // Labels come from the live agent roster, not the static seed list. The seed
+  // list stopped at seven agents, so the Documentation stage rendered as an
+  // unlabelled row once it was added to the pipeline.
+  const nameById = Object.fromEntries(agents.map((a) => [a.id, a.name]));
+  const roleById = Object.fromEntries(agents.map((a) => [a.id, a.role]));
+  const iconById = Object.fromEntries(agents.map((a) => [a.id, a.icon]));
 
   return (
     <div className="surface p-4 overflow-hidden">
@@ -83,7 +86,7 @@ export function PipelineFlow() {
                         {nameById[node.agentId]}
                       </p>
                       <p className="text-[9px] text-muted-foreground truncate leading-tight">
-                        {seedAgents.find((a) => a.id === node.agentId)?.role}
+                        {roleById[node.agentId]}
                       </p>
                     </div>
                   </div>

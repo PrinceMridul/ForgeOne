@@ -9,6 +9,7 @@ import { ExecutionTimeline } from "@/components/execution-timeline";
 import { ExecutionReplay } from "@/components/execution-replay";
 import { RunHistory } from "@/components/run-history";
 import { LiveLogViewer } from "@/components/live-log-viewer";
+import { SampleDataNotice } from "@/components/sample-data-notice";
 
 export const Route = createFileRoute("/_app/activity")({
   head: () => ({
@@ -35,7 +36,7 @@ function ActivityPage() {
       <Breadcrumb items={[{ label: "Activity" }]} />
       <PageHeader
         title="Activity"
-        description="Every commit, test, deploy, and review — streaming from all seven agents."
+        description="Engineering events across the eight-agent pipeline."
         actions={
           <>
             <Button variant="outline" size="sm" className="gap-1.5">
@@ -47,6 +48,8 @@ function ActivityPage() {
           </>
         }
       />
+
+      <SampleDataNotice detail="The replay scrubber and run-history metrics on this page are illustrative. The live run console, artifact explorer and repository views are driven entirely by measured run data." />
 
       <ExecutionTimeline />
 

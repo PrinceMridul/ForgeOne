@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLiveEngine } from "@/lib/live-engine";
 import { api } from "@/lib/api-client";
-import { agents as seedAgents } from "@/lib/mock-data";
 
 export interface GeneratedFile {
   path: string;
@@ -771,6 +770,3 @@ function FileDialog({
     </Dialog>
   );
 }
-
-// Keep the seedAgents import used (referenced for consistency with other components)
-void seedAgents;

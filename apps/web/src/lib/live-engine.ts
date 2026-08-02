@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Server,
   ClipboardList,
+  BookOpen,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Agent, ActivityEvent } from "./mock-data";
@@ -51,6 +52,13 @@ export interface LogLine {
   agentName: string;
   level: LogLevel;
   msg: string;
+  /**
+   * The backend event type this line came from. Kept so surfaces can tell an
+   * agent narrating its reasoning ("Recognised the brief as a healthcare
+   * product") apart from one reporting a discrete step ("FILE_CREATED: …"),
+   * instead of labelling both the same way.
+   */
+  kind: "reasoning" | "step" | "error";
 }
 
 export interface MetricPoint {
@@ -156,6 +164,17 @@ export interface EngineState {
 
 // ─── Pipeline definition ─────────────────────────────────────────────────────
 
+/**
+ * The dependency graph the console draws.
+ *
+ * This mirrors STAGE_CONFIGS in apps/api/src/orchestrator/pipeline.ts, which is
+ * what actually gates execution — an agent does not start until every artifact
+ * type listed as an input exists. The names here are the real filenames the
+ * pipeline emits, so `producedOutputs` matching against live artifact names
+ * resolves instead of silently never matching. Keep the two in step: a stage
+ * drawn with inputs the backend does not require is a diagram of a system that
+ * does not exist.
+ */
 export const PIPELINE_DEF: Array<{
   agentId: string;
   inputs: PipelineArtifact[];
@@ -175,50 +194,58 @@ export const PIPELINE_DEF: Array<{
       { name: "PRD.md", kind: "spec" },
       { name: "Tasks.json", kind: "spec" },
     ],
-    outputs: [
-      { name: "Architecture.md", kind: "doc" },
-      { name: "ADR-021.md", kind: "doc" },
-    ],
+    outputs: [{ name: "Architecture.md", kind: "doc" }],
   },
   {
     agentId: "developer",
     inputs: [
-      { name: "Architecture.md", kind: "doc" },
+      { name: "PRD.md", kind: "spec" },
       { name: "Tasks.json", kind: "spec" },
+      { name: "Architecture.md", kind: "doc" },
     ],
     outputs: [
+      { name: "Source files", kind: "code" },
       { name: "Repository.zip", kind: "build" },
-      { name: "openapi.yaml", kind: "spec" },
     ],
   },
   {
     agentId: "reviewer",
-    inputs: [{ name: "Repository.zip", kind: "build" }],
-    outputs: [{ name: "Review.md", kind: "doc" }],
+    inputs: [
+      { name: "Source files", kind: "code" },
+      { name: "Architecture.md", kind: "doc" },
+    ],
+    outputs: [{ name: "PRReview.md", kind: "doc" }],
   },
   {
     agentId: "tester",
-    inputs: [
-      { name: "Repository.zip", kind: "build" },
-      { name: "Review.md", kind: "doc" },
-    ],
-    outputs: [{ name: "coverage-report.html", kind: "test" }],
+    inputs: [{ name: "Source files", kind: "code" }],
+    outputs: [{ name: "TestReport.md", kind: "test" }],
   },
   {
     agentId: "security",
-    inputs: [{ name: "Repository.zip", kind: "build" }],
-    outputs: [{ name: "sast-report.json", kind: "security" }],
+    inputs: [{ name: "Source files", kind: "code" }],
+    outputs: [{ name: "SecurityAudit.md", kind: "security" }],
   },
   {
     agentId: "devops",
+    inputs: [{ name: "Source files", kind: "code" }],
+    outputs: [{ name: "DeploymentPlan.md", kind: "deploy" }],
+  },
+  {
+    agentId: "documentation",
     inputs: [
-      { name: "Repository.zip", kind: "build" },
-      { name: "sast-report.json", kind: "security" },
-      { name: "coverage-report.html", kind: "test" },
+      { name: "PRD.md", kind: "spec" },
+      { name: "Tasks.json", kind: "spec" },
+      { name: "Architecture.md", kind: "doc" },
+      { name: "Source files", kind: "code" },
+      { name: "PRReview.md", kind: "doc" },
+      { name: "TestReport.md", kind: "test" },
+      { name: "SecurityAudit.md", kind: "security" },
+      { name: "DeploymentPlan.md", kind: "deploy" },
     ],
     outputs: [
-      { name: "deployment-v482.yaml", kind: "deploy" },
-      { name: "Docs.md", kind: "doc" },
+      { name: "ProjectOverview.md", kind: "doc" },
+      { name: "SummaryReport.md", kind: "doc" },
     ],
   },
 ];
@@ -351,6 +378,15 @@ const AGENT_DEFS: AgentDef[] = [
     accent: "info",
     tokenBudget: 80_000,
   },
+  {
+    id: "documentation",
+    backendType: "DOCUMENTATION",
+    name: "Lyra",
+    role: "Documentation",
+    icon: BookOpen,
+    accent: "chart-3",
+    tokenBudget: 40_000,
+  },
 ];
 
 const BACKEND_TO_AGENT_ID = Object.fromEntries(AGENT_DEFS.map((d) => [d.backendType, d.id]));
@@ -435,7 +471,11 @@ function activeAgentProgress(run: WorkflowRun | null): number {
   return run?.stageProgress ?? run?.stepProgress ?? 0;
 }
 
-function buildAgents(run: WorkflowRun | null, tick: number): Agent[] {
+function buildAgents(
+  run: WorkflowRun | null,
+  tick: number,
+  elapsedByAgent: Map<string, number>,
+): Agent[] {
   const currentId = run?.currentAgent ? (BACKEND_TO_AGENT_ID[run.currentAgent] ?? null) : null;
   const completedSteps = run?.completedSteps ?? 0;
   const overallPct = activeAgentProgress(run);
@@ -469,7 +509,7 @@ function buildAgents(run: WorkflowRun | null, tick: number): Agent[] {
           : "Waiting",
       tokensUsed: Math.min(def.tokenBudget, tokensUsed),
       tokenBudget: def.tokenBudget,
-      duration: msToClock(active || done ? tick * 900 : 0),
+      duration: msToClock(elapsedByAgent.get(def.id) ?? 0),
       memoryMb: done ? 256 : active ? 256 + (tick % 10) * 8 : 0,
       accent: def.accent,
       logs: [],
@@ -477,13 +517,45 @@ function buildAgents(run: WorkflowRun | null, tick: number): Agent[] {
   });
 }
 
+/**
+ * Wall-clock time each agent held the pipeline, measured from its own events.
+ *
+ * Every event carries a real timestamp and an agent, so a stage's span is the
+ * distance between its first and last event. This replaced a flat `30_000`
+ * that made every agent card read "30s" regardless of what happened — a number
+ * that looked measured and was not.
+ *
+ * A stage that emitted a single event has no span; it reports 0 and the card
+ * omits the figure rather than rounding a real 8ms up to a fake second.
+ */
+function stageElapsedMs(events: ExecutionEvent[]): Map<string, number> {
+  const bounds = new Map<string, { first: number; last: number }>();
+
+  for (const event of events) {
+    const agentId = BACKEND_TO_AGENT_ID[event.agentType];
+    if (!agentId) continue;
+    const at = new Date(event.timestamp).getTime();
+    if (!Number.isFinite(at)) continue;
+
+    const current = bounds.get(agentId);
+    if (!current) bounds.set(agentId, { first: at, last: at });
+    else {
+      if (at < current.first) current.first = at;
+      if (at > current.last) current.last = at;
+    }
+  }
+
+  return new Map([...bounds].map(([agentId, b]) => [agentId, Math.max(0, b.last - b.first)]));
+}
+
 function buildPipeline(
   run: WorkflowRun | null,
   artifactNames: Set<string>,
-  tick: number,
+  elapsedByAgent: Map<string, number>,
 ): PipelineNode[] {
   const currentId = run?.currentAgent ? (BACKEND_TO_AGENT_ID[run.currentAgent] ?? null) : null;
   const completedSteps = run?.completedSteps ?? 0;
+  const hasSourceFiles = artifactNames.has("Repository.zip");
 
   return PIPELINE_DEF.map((def, i) => {
     const done = i < completedSteps;
@@ -501,16 +573,21 @@ function buildPipeline(
     }
 
     const progress = done ? 100 : active ? stagePct : 0;
+    // "Source files" stands for the repository the Developer emits, which is
+    // many artifacts rather than one named file; every other output is a real
+    // filename and matches the live artifact set directly.
+    const emitted = (name: string) =>
+      name === "Source files" ? hasSourceFiles : artifactNames.has(name);
     const producedOutputs = done
       ? def.outputs.map((o) => o.name)
-      : def.outputs.filter((o) => artifactNames.has(o.name)).map((o) => o.name);
+      : def.outputs.filter((o) => emitted(o.name)).map((o) => o.name);
 
     return {
       agentId: def.agentId,
       order: i,
       stage,
       progress,
-      elapsedMs: done ? 30_000 : active ? tick * 900 : 0,
+      elapsedMs: elapsedByAgent.get(def.agentId) ?? 0,
       startedAtTick: done || active ? 0 : null,
       inputs: def.inputs,
       outputs: def.outputs,
@@ -521,18 +598,33 @@ function buildPipeline(
   });
 }
 
+/**
+ * Producer → consumer edges, derived from PIPELINE_DEF rather than listed by
+ * hand. An edge exists exactly when one stage's output is another stage's
+ * declared input, so this graph cannot drift out of step with the pipeline the
+ * backend actually gates on. The previous hardcoded list drew edges that ran
+ * backwards (reviewer → developer) and omitted the Documentation stage
+ * entirely.
+ */
 function buildComm(currentAgentId: string | null): CommEdge[] {
   const now = Date.now();
-  const base: CommEdge[] = [
-    { from: "pm", to: "architect", strength: 0.3, lastMs: now },
-    { from: "architect", to: "developer", strength: 0.3, lastMs: now },
-    { from: "developer", to: "reviewer", strength: 0.3, lastMs: now },
-    { from: "developer", to: "tester", strength: 0.3, lastMs: now },
-    { from: "reviewer", to: "developer", strength: 0.3, lastMs: now },
-    { from: "tester", to: "developer", strength: 0.3, lastMs: now },
-    { from: "devops", to: "developer", strength: 0.3, lastMs: now },
-    { from: "security", to: "reviewer", strength: 0.3, lastMs: now },
-  ];
+  const producerOf = new Map<string, string>();
+  for (const stage of PIPELINE_DEF) {
+    for (const output of stage.outputs) producerOf.set(output.name, stage.agentId);
+  }
+
+  const seen = new Set<string>();
+  const base: CommEdge[] = [];
+  for (const stage of PIPELINE_DEF) {
+    for (const input of stage.inputs) {
+      const from = producerOf.get(input.name);
+      if (!from || from === stage.agentId) continue;
+      const key = `${from}->${stage.agentId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      base.push({ from, to: stage.agentId, strength: 0.3, lastMs: now });
+    }
+  }
   if (!currentAgentId) return base;
   return base.map((e) =>
     e.from === currentAgentId || e.to === currentAgentId ? { ...e, strength: 0.9 } : e,
@@ -555,7 +647,8 @@ function eventsToLogs(events: ExecutionEvent[]): LogLine[] {
         agentName: def?.name ?? agentId,
         level,
         msg: e.message,
-      };
+        kind: e.eventType === "ERROR" ? "error" : e.eventType === "STEP" ? "step" : "reasoning",
+      } as LogLine;
     });
 }
 
@@ -650,14 +743,14 @@ function initialState(): EngineState {
   return {
     tick: 0,
     runningRunId: "",
-    agents: buildAgents(null, 0),
+    agents: buildAgents(null, 0, new Map()),
     logs: [],
     events: [],
     metrics,
     artifacts: [],
     runs: [],
     comm: buildComm(null),
-    pipeline: buildPipeline(null, new Set(), 0),
+    pipeline: buildPipeline(null, new Set(), new Map()),
     producedArtifacts: ["Prompt"],
     flying: [],
     playback: { playing: true, speed: 1, position: metrics.length - 1 },
@@ -700,8 +793,9 @@ async function poll(): Promise<void> {
     const logs = eventsToLogs(events);
     const activityEvents = eventsToActivity(events);
     const artifacts = backendArtifactsToFrontend(backendArtifacts);
-    const pipeline = buildPipeline(run, artifactNames, t);
-    const agents = buildAgents(run, t);
+    const elapsedByAgent = stageElapsedMs(events);
+    const pipeline = buildPipeline(run, artifactNames, elapsedByAgent);
+    const agents = buildAgents(run, t, elapsedByAgent);
     const comm = buildComm(currentAgentId);
 
     // Detect newly arrived artifact names for flying animations

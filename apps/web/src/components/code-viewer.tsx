@@ -56,21 +56,65 @@ export function CodeViewer({
   );
 }
 
-const keywords =
-  /\b(import|from|export|const|let|var|function|return|if|else|await|async|new|class|extends|type|interface|enum|as|of|in)\b/g;
-const strings = /(['"`])((?:\\.|(?!\1).)*)\1/g;
-const comments = /(\/\/.*$|\/\*[\s\S]*?\*\/)/g;
-const numbers = /\b(\d+)\b/g;
+const COLOR = {
+  comment: "oklch(0.55 0.02 258)",
+  string: "oklch(0.72 0.17 155)",
+  keyword: "oklch(0.72 0.19 258)",
+  number: "oklch(0.78 0.17 75)",
+} as const;
+
+/**
+ * One alternation covering every token kind, matched in a single pass.
+ *
+ * Group 1 comment · 2 string · 3 its quote char · 4 number · 5 keyword.
+ */
+const TOKEN =
+  /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|((['"`])(?:\\.|(?!\3)[^\\])*\3)|(\b\d+(?:\.\d+)?\b)|\b(import|from|export|const|let|var|function|return|if|else|await|async|new|class|extends|type|interface|enum|as|of|in)\b/g;
 
 function esc(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function highlight(line: string) {
-  let s = esc(line);
-  s = s.replace(comments, '<span style="color:oklch(0.55 0.02 258)">$1</span>');
-  s = s.replace(strings, '<span style="color:oklch(0.72 0.17 155)">$1$2$1</span>');
-  s = s.replace(keywords, '<span style="color:oklch(0.72 0.19 258)">$1</span>');
-  s = s.replace(numbers, '<span style="color:oklch(0.78 0.17 75)">$1</span>');
-  return s;
+/**
+ * Highlight a line in a single pass over the original text.
+ *
+ * This used to run four sequential `.replace()` calls. Each pass re-scanned
+ * the markup the previous ones had injected, so the quotes and digits inside
+ * `style="color:oklch(0.72 0.19 258)"` were themselves matched and wrapped —
+ * leaking colour values into the rendered source. Matching once against the
+ * untouched line and escaping each token as it is emitted makes that
+ * impossible.
+ */
+function highlight(line: string): string {
+  let out = "";
+  let last = 0;
+
+  TOKEN.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = TOKEN.exec(line)) !== null) {
+    const [full, comment, str, , num, keyword] = match;
+
+    // Zero-length matches would spin forever.
+    if (full.length === 0) {
+      TOKEN.lastIndex++;
+      continue;
+    }
+
+    out += esc(line.slice(last, match.index));
+
+    const color = comment
+      ? COLOR.comment
+      : str
+        ? COLOR.string
+        : num
+          ? COLOR.number
+          : keyword
+            ? COLOR.keyword
+            : null;
+
+    out += color ? `<span style="color:${color}">${esc(full)}</span>` : esc(full);
+    last = match.index + full.length;
+  }
+
+  return out + esc(line.slice(last));
 }

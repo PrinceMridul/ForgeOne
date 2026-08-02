@@ -13,7 +13,7 @@ run it, and verify the claims.
 | `apps/agent-runtime/` | Python service — scaffolded, **not wired** (see Limitations) |
 | `packages/` | Shared config, types, logger, database schema |
 | `docs/` | Architecture notes and the full presentation package |
-| `docs/presentation/` | 15 slide files + 16 screenshots from one real run |
+| `docs/presentation/` | 16 slide files + 16 screenshots from one real run |
 | `prompts/` | Agent system-prompt templates |
 | `scripts/` | Developer tooling |
 | `.github/workflows/` | CI — lint, type-check, test, build |
@@ -25,7 +25,7 @@ run it, and verify the claims.
 | `README.md` | Project overview, quick start, architecture, limitations |
 | `SUBMISSION.md` | Hackathon submission form content |
 | `Demo_Script.md` | 30s / 90s / 3-minute narration with click order |
-| `ForgeOne_Hackathon_Presentation.pptx` | 13-slide deck |
+| `ForgeOne_Hackathon_Presentation.pptx` | 14-slide deck |
 | `LICENSE` · `SECURITY.md` · `CONTRIBUTING.md` | Standard open-source files |
 
 ## Run it

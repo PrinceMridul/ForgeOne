@@ -1,5 +1,33 @@
 # ForgeOne — Hackathon Submission
 
+**ChatGPT Codex Hackathon 2026 · Track 1 — Agentic Coding**
+
+## Mandatory links
+
+| Requirement | Link |
+|---|---|
+| **Deployed application** | _paste the URL from your Render/Docker deploy — see [DEPLOYMENT.md](DEPLOYMENT.md)_ |
+| **GitHub repository** | https://github.com/PrinceMridul/ForgeOne |
+| **Demo video (≤3 min)** | _paste the unlisted video URL_ |
+| **Project description doc** | Paste [PROJECT_DESCRIPTION.md](PROJECT_DESCRIPTION.md) into a Google Doc, share "anyone with the link" |
+
+> The deployed link and the video are the only two items that cannot be produced
+> from this repository alone. Everything else is committed here.
+
+## Track and problem statement
+
+**Track 1 — Agentic Coding.** The track's own example ideas list *"multi-agent
+engineering teams"*; ForgeOne is exactly that, and additionally covers three
+other named ideas in the same list — auto-docs agents, test-coverage agents and
+security-review agents — as stages of one pipeline.
+
+**Problem.** AI coding tools return a file. Software is built by a team
+following a process, and the process is where the quality comes from: someone
+writes the spec, someone designs the schema, someone reviews the diff, someone
+asks what happens when the input is hostile. Skipping that is why generated
+code is hard to trust. ForgeOne runs the process and streams it, so you can
+judge the reasoning rather than only the output.
+
 ## Project Name
 
 **ForgeOne** — Your Autonomous Software Engineering Team
@@ -72,6 +100,22 @@ pnpm turbo dev      # web :8080 · api :4000
 
 No `.env` required — every setting has a working default.
 
+## Deployment
+
+One service, one public URL. The TanStack Start SSR server binds `$PORT` and
+reverse-proxies `/api/*` to the Fastify API on loopback, so the browser is
+same-origin in production exactly as it is in development — no CORS surface, no
+second cold start on the first click of a demo.
+
+```bash
+pnpm turbo build && pnpm start          # → http://localhost:8080
+node scripts/verify-deployment.mjs      # asserts the claims end to end
+```
+
+[`render.yaml`](render.yaml) deploys it in one click with nothing entered; the
+root [`Dockerfile`](Dockerfile) builds the same topology for any container host.
+Runbook: [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## Demo Flow
 
 1. Open `http://localhost:8080`
@@ -109,5 +153,22 @@ Full narration in [`Demo_Script.md`](Demo_Script.md).
 | `pnpm turbo type-check` | 8/8 tasks |
 | `pnpm turbo test` | 118 tests, 10 files |
 | `pnpm turbo build` | 5/5 tasks |
+| `node scripts/verify-deployment.mjs` | 7/7 checks against a running instance |
 
 Validated across 10 domains: distinct route surfaces 10/10, zip integrity 6/6, cross-agent citation errors 0, ForgeOne self-references in generated artifacts 0.
+
+## Use of Codex
+
+Depth of agentic usage is 15% of the judging matrix, so it is evidenced rather
+than asserted: [**docs/CODEX_USAGE.md**](docs/CODEX_USAGE.md) cites commits,
+files and runnable commands.
+
+The short version — each unit of work was a full loop (plan → implement →
+review against the running product → fix → verify), and the loop is legible in
+the history: of 20 commits, 6 are `feat(...)` and **8 are `fix(...)`**, none of
+which is a user bug report. The most valuable finding came from the review half
+of the loop, not the build half: feeding a deliberately hostile provider
+response through ForgeOne's own pipeline produced an archive containing
+`../../../../etc/cron.d/backdoor`. Findings then became durable constraints in
+[`AGENTS.md`](AGENTS.md) rather than one-off patches, so the next iteration
+cannot regress.

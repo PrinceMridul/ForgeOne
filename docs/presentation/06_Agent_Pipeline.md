@@ -28,7 +28,7 @@ Documentation ────► ProjectOverview.md, SummaryReport.md
 
 - The pipeline is CPU-only and finishes in ~8 ms
 - Pacing meters *event emission*, never the work
-- Result: a ~40 second run you can actually watch
+- Result: a ~42 second run you can actually watch
 
 ![Product Manager](images/04-product-manager.png)
 ![Architect](images/05-architect.png)

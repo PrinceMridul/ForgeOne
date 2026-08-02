@@ -13,9 +13,17 @@
 *Describe a software idea. Watch eight specialist agents plan, architect, build,
 review, test, audit and document it — then download the repository they produced.*
 
-[Demo](#demo) · [Quick Start](#quick-start) · [Agent Team](#agent-team) · [Architecture](#architecture) · [Verification](#verification) · [Limitations](#limitations)
+[Demo](#demo) · [Quick Start](#quick-start) · [Deploy](DEPLOYMENT.md) · [Agent Team](#agent-team) · [Architecture](#architecture) · [Verification](#verification) · [Limitations](#limitations)
 
 </div>
+
+---
+
+> **ChatGPT Codex Hackathon 2026 — Track 1, Agentic Coding.**
+> A multi-agent engineering team, which is one of the track's named example
+> ideas. How Codex built it, with commit-level evidence, is in
+> [docs/CODEX_USAGE.md](docs/CODEX_USAGE.md). Deploying it is one click:
+> [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ---
 
@@ -122,6 +130,23 @@ No `.env` is required — `apps/api/src/config.ts` supplies a working default fo
 every setting. Set an LLM API key (see below) to have the Developer agent call
 a real model instead of the deterministic generator.
 
+### Running the production build
+
+The deployed topology is a single service on a single port: the SSR server
+binds `$PORT` and reverse-proxies `/api/*` to the Fastify API on loopback, so
+the browser is same-origin in production exactly as it is in development.
+
+```bash
+pnpm turbo build
+pnpm start                              # → http://localhost:8080
+
+node scripts/verify-deployment.mjs      # asserts the claims below, end to end
+```
+
+One-click deploy configuration lives in [`render.yaml`](render.yaml), and the
+root [`Dockerfile`](Dockerfile) builds the same topology for any container host.
+Full runbook: **[DEPLOYMENT.md](DEPLOYMENT.md)**.
+
 <details>
 <summary>Optional components (not needed to run the demo)</summary>
 
@@ -156,11 +181,11 @@ scaffold rather than emitting a partial repository.
 The orchestration pipeline is deterministic and CPU-only — all eight agents
 resolve in roughly 8ms, faster than the console can poll. Pacing meters how
 quickly already-computed telemetry is released so a run streams agent by agent
-over ~40 seconds. Work itself is never slowed; only event emission is metered.
+over ~42 seconds. Work itself is never slowed; only event emission is metered.
 
 | Variable | Default | Effect |
 |---|---|---|
-| `RUN_EVENT_PACING_MS` | `240` | Delay between telemetry events within a stage |
+| `RUN_EVENT_PACING_MS` | `130` | Delay between telemetry events within a stage |
 | `RUN_STAGE_PACING_MS` | `900` | Settle time between agents |
 | `RUN_PACING` | *(unset)* | Set to `off` to restore instant completion |
 
@@ -180,9 +205,11 @@ forgeone/
 │   ├── logger/           # Shared logging                                     [active]
 │   └── database/         # Prisma schema & client                             [not wired]
 ├── prompts/              # Agent system prompt templates                      [not wired]
-├── infra/                # Docker compose assets                              [optional]
-├── docs/                 # Architecture & guides
-└── scripts/              # Developer tooling
+├── docs/                 # Architecture, decisions, presentation
+├── scripts/              # Production supervisor, deployment verification
+├── AGENTS.md             # Operating contract for coding agents               [active]
+├── render.yaml           # One-click deploy blueprint                         [active]
+└── Dockerfile            # Whole-product image, one port                      [active]
 ```
 
 The orchestrator lives in `apps/api/src/orchestrator`:
@@ -252,15 +279,29 @@ running server:
   files are rejected, and the run falls back to the deterministic generator if
   too little survives validation.
 
+And against a running instance — localhost or a deployed URL — the same claims
+are re-derived rather than trusted:
+
+```bash
+node scripts/verify-deployment.mjs https://your-deployment-url
+```
+
+It counts real ZIP central-directory headers and asserts that number equals the
+count the console displays, checks every agent emitted telemetry, and greps
+every generated artifact for ForgeOne self-references. Non-zero exit on failure.
+
 ## Submission Package
 
 | Document | Contents |
 |---|---|
 | [SUBMISSION.md](SUBMISSION.md) | Pitch, features, stack, AI usage, limitations |
+| [docs/CODEX_USAGE.md](docs/CODEX_USAGE.md) | How Codex built this — the agentic loop, with commit-level evidence |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | One-URL topology, Render blueprint, Docker, verification |
 | [Demo_Script.md](Demo_Script.md) | 30s / 90s / 3-minute narration, click order, expected outputs |
-| [docs/presentation/](docs/presentation/) | 15 slide-by-slide markdown files |
+| [AGENTS.md](AGENTS.md) | Operating contract read by Codex before it edits this repo |
+| [docs/presentation/](docs/presentation/) | 16 slide-by-slide markdown files |
 | [docs/presentation/images/](docs/presentation/images/) | 16 screenshots from one real run |
-| `ForgeOne_Hackathon_Presentation.pptx` | 13-slide deck, dark theme |
+| `ForgeOne_Hackathon_Presentation.pptx` | 14-slide deck, dark theme |
 | [submission/README_SUBMISSION.md](submission/README_SUBMISSION.md) | What ships, what is excluded, and why |
 
 ## Credits

@@ -127,7 +127,7 @@ Persistence is the next day of work. Everything else you see is measured."
 | Generated routes | patients, doctors, appointments, medical_records, prescriptions, lab_results |
 | SecurityAudit.md | ≥1 HIGH finding, severity table |
 | Repository.zip | Opens cleanly · 19 entries · `package.json` name matches header |
-| Runtime | ~40 seconds end to end |
+| Runtime | ~42 seconds end to end |
 
 ## If something goes wrong
 

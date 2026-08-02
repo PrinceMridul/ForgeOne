@@ -17,7 +17,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: ['javascript-typescript', 'python']
+        # Only the language that ships. apps/agent-runtime is scaffolded and
+        # not wired into the execution path, so analysing it reports on code
+        # that never runs.
+        language: ['javascript-typescript']
     steps:
       - uses: actions/checkout@v4
       - uses: github/codeql-action/init@v3

@@ -261,6 +261,7 @@ running server:
 | [docs/presentation/](docs/presentation/) | 15 slide-by-slide markdown files |
 | [docs/presentation/images/](docs/presentation/images/) | 16 screenshots from one real run |
 | `ForgeOne_Hackathon_Presentation.pptx` | 13-slide deck, dark theme |
+| [submission/README_SUBMISSION.md](submission/README_SUBMISSION.md) | What ships, what is excluded, and why |
 
 ## Credits
 

@@ -7,6 +7,10 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+# The pipeline that runs during a demo is entirely TypeScript and holds run
+# state in memory, so CI needs no database, broker or Python toolchain. Jobs
+# here cover exactly what ships.
 jobs:
   lint:
     name: Lint
@@ -20,6 +24,7 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo run lint
+
   type-check:
     name: Type Check
     runs-on: ubuntu-latest
@@ -32,25 +37,10 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo run type-check
+
   test:
     name: Test
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        ports: ['5432:5432']
-        env:
-          POSTGRES_USER: forgeone
-          POSTGRES_PASSWORD: forgeone
-          POSTGRES_DB: forgeone_test
-        options: --health-cmd "pg_isready -U forgeone" --health-interval 10s --health-timeout 5s --health-retries 5
-      redis:
-        image: redis:7-alpine
-        ports: ['6379:6379']
-        options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
-    env:
-      DATABASE_URL: postgresql://forgeone:forgeone@localhost:5432/forgeone_test
-      REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -60,21 +50,7 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo run test:ci
-  test-python:
-    name: Test (Python)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/agent-runtime
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - uses: actions/setup-python@v5
-        with:
-          python-version-file: '.python-version'
-      - run: uv sync
-      - run: uv run ruff check .
-      - run: uv run pytest --cov
+
   build:
     name: Build
     runs-on: ubuntu-latest

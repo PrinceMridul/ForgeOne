@@ -31,7 +31,7 @@ node scripts/verify-deployment.mjs https://your-url
 | Item | Status | Where |
 |---|---|---|
 | Deployed application link | **FAIL** — deploy, then paste | `SUBMISSION.md` → Mandatory links |
-| GitHub repository, public, visible history | **PASS** | https://github.com/PrinceMridul/ForgeOne · 25 commits |
+| GitHub repository, public, visible history | **PASS** | https://github.com/PrinceMridul/ForgeOne · 27 commits |
 | Demo video ≤3 min | **FAIL** — record, then paste | `SUBMISSION.md` → Mandatory links |
 | Project description Google Doc | **PASS** (content ready) | Paste [PROJECT_DESCRIPTION.md](PROJECT_DESCRIPTION.md), share *anyone with the link → Viewer* |
 | Track selected | **PASS** | Theme 1 — Agentic Coding |

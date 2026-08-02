@@ -3,8 +3,11 @@
   "globalDependencies": [".env"],
   "globalEnv": ["NODE_ENV"],
   "tasks": {
-    "build": { "dependsOn": ["^build"], "outputs": ["dist/**", ".next/**", "!.next/cache/**", ".output/**", ".vinxi/**"] },
-    "dev": { "cache": false, "persistent": true },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", ".output/**", ".vinxi/**"]
+    },
+    "dev": { "dependsOn": ["^build"], "cache": false, "persistent": true },
     "lint": { "dependsOn": ["^build"] },
     "lint:fix": { "dependsOn": ["^build"] },
     "type-check": { "dependsOn": ["^build"] },

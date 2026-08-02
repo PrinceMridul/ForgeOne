@@ -15,8 +15,14 @@
  * at runtime via env vars for demo rehearsal.
  */
 
-/** Delay between individual telemetry events within a stage. */
-const DEFAULT_EVENT_PACING_MS = 240;
+/**
+ * Delay between individual telemetry events within a stage.
+ *
+ * A run emits ~266 events, so this number sets the wall-clock length of a demo
+ * almost single-handedly: 130ms lands a full run at ~42s, which fits inside the
+ * 90-second narration in Demo_Script.md and leaves room in a 3-minute video.
+ */
+const DEFAULT_EVENT_PACING_MS = 130;
 
 /** Additional settle time between one agent finishing and the next starting. */
 const DEFAULT_STAGE_PACING_MS = 900;

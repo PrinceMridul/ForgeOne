@@ -4,11 +4,15 @@
   "private": true,
   "description": "Your Autonomous Software Engineering Team",
   "license": "MIT",
-  "engines": { "node": ">=22.0.0", "pnpm": ">=9.0.0" },
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "start": "node scripts/start-production.mjs",
     "test": "turbo run test",
     "test:ci": "turbo run test:ci",
     "lint": "turbo run lint",

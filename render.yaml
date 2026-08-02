@@ -1,0 +1,38 @@
+# Render Blueprint — one service, one public URL.
+#
+# The Fastify API stays on loopback inside the instance and the TanStack Start
+# SSR server reverse-proxies /api/* to it, so the browser is always same-origin
+# (see apps/web/src/lib/api-proxy.ts and scripts/start-production.mjs).
+#
+# Deploy: Render dashboard -> New -> Blueprint -> pick this repo -> Apply.
+# Nothing else is required; every setting below has a working default and the
+# demo holds run state in memory, so no database or broker is provisioned.
+services:
+  - type: web
+    name: forgeone
+    runtime: node
+    plan: free
+    # Free instances sleep after 15 minutes idle; the first request afterwards
+    # pays a cold start. Health checks keep the instance warm while judging.
+    healthCheckPath: /health
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm turbo run build
+    startCommand: node scripts/start-production.mjs
+    envVars:
+      # 22.18+ so the toolchain matches .nvmrc and CI.
+      - key: NODE_VERSION
+        value: 22.20.0
+      - key: NODE_ENV
+        value: production
+      # Leave empty: the browser calls /api/v1 on its own origin and the SSR
+      # server proxies it. Setting this would reintroduce a CORS surface.
+      - key: VITE_API_URL
+        value: ''
+      # Set one of these in the Render dashboard to have the Product Manager and
+      # Developer agents call a real model instead of the deterministic
+      # generator. The demo runs correctly without any of them.
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

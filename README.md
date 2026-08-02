@@ -303,6 +303,9 @@ every generated artifact for ForgeOne self-references. Non-zero exit on failure.
 | [docs/presentation/images/](docs/presentation/images/) | 16 screenshots from one real run |
 | `ForgeOne_Hackathon_Presentation.pptx` | 14-slide deck, dark theme |
 | [submission/README_SUBMISSION.md](submission/README_SUBMISSION.md) | What ships, what is excluded, and why |
+| [RELEASE_NOTES.md](RELEASE_NOTES.md) | Everything changed in the submission-hardening pass, with rationale |
+| [JUDGE_REVIEW.md](JUDGE_REVIEW.md) | Adversarial self-assessment against the evaluation matrix |
+| [FINAL_CHECKLIST.md](FINAL_CHECKLIST.md) | Every submission item, PASS or FAIL |
 
 ## Credits
 

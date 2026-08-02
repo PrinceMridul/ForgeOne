@@ -15,7 +15,7 @@ run it, and verify the claims.
 | `docs/` | Architecture notes and the full presentation package |
 | `docs/presentation/` | 16 slide files + 16 screenshots from one real run |
 | `prompts/` | Agent system-prompt templates |
-| `scripts/` | Developer tooling |
+| `scripts/` | Production supervisor, deployment verification, screenshot capture |
 | `.github/workflows/` | CI — lint, type-check, test, build |
 
 ## Root documents
@@ -56,8 +56,8 @@ part of what runs:
 - `node_modules/`, build output (`dist/`, `.next/`, `.output/`, `.turbo/`)
 - Coverage reports, logs, caches, temp directories
 - `output/` — downloaded run artifacts kept locally for manual comparison
-- Playwright browsers and the screenshot-capture harness (development-only,
-  never part of the repository)
+- Playwright's downloaded browser binaries (`npx playwright install chromium`
+  fetches them on demand; the capture harness itself ships in `scripts/`)
 - `apps/web_old/` — the superseded Next.js frontend, fully replaced by
   `apps/web`
 - Editor-specific configuration not required to build or lint

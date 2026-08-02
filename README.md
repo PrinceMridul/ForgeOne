@@ -252,6 +252,16 @@ running server:
   files are rejected, and the run falls back to the deterministic generator if
   too little survives validation.
 
+## Submission Package
+
+| Document | Contents |
+|---|---|
+| [SUBMISSION.md](SUBMISSION.md) | Pitch, features, stack, AI usage, limitations |
+| [Demo_Script.md](Demo_Script.md) | 30s / 90s / 3-minute narration, click order, expected outputs |
+| [docs/presentation/](docs/presentation/) | 15 slide-by-slide markdown files |
+| [docs/presentation/images/](docs/presentation/images/) | 16 screenshots from one real run |
+| `ForgeOne_Hackathon_Presentation.pptx` | 13-slide deck, dark theme |
+
 ## Credits
 
 Built for the **ChatGPT Codex Hackathon 2026**.
